@@ -1,25 +1,40 @@
-import { Router, type Request, type Response } from 'express';
-import { Argon2id } from 'oslo/password';
+import { Router, type Request, type Response } from "express";
+import { Argon2id } from "oslo/password";
 
-import { lucia } from '../lib/auth.js';
-import { isValidUsername, isValidPassword } from '../utils/validation.js';
-import { type User, createUser } from '../lib/users.js';
+import { lucia } from "../lib/auth.js";
+import { isValidUsername, isValidPassword } from "../utils/validation.js";
+import {
+  type User,
+  createUser,
+  getUserByUsername,
+  getUserByEmail,
+} from "../lib/users.js";
+import { sendEmail } from "../lib/email.js";
 
-let router = Router();
+const router = Router();
 
-router.post('/signup', async (req: Request, res: Response) => {
-  console.log(req.body);
+router.post("/signup", async (req: Request, res: Response) => {
+  // console.log(req.body);
   const username: string | null = req.body.username ?? null;
-	if (!username || !isValidUsername(username))
-		return res.status(400).json({ error: `Illegal username: '${username}'`});
+  if (!username || !isValidUsername(username))
+    return res.status(400).json({ error: `Illegal username` });
 
-	const password: string | null = req.body.password ?? null;
-	if (!password || !isValidPassword(password))
-		return res.status(400).json({error: `Illegal password: '${password}'`});
+  const password: string | null = req.body.password ?? null;
+  if (!password || !isValidPassword(password))
+    return res.status(400).json({ error: `Illegal password` });
 
-  // TODO: Do a check for duplicate entries (Email, username)
+  console.log(await sendEmail());
+  return res.end();
 
-	const hashedPassword = await new Argon2id().hash(password);
+  // Checking for existing users with the same username or password
+  let prexistingUser = await getUserByUsername(username);
+  if (prexistingUser)
+    return res.status(400).json({ error: `Username already exists` });
+  prexistingUser = await getUserByEmail(req.body.email);
+  if (prexistingUser)
+    return res.status(400).json({ error: `Email already exists` });
+
+  const hashedPassword = await new Argon2id().hash(password);
 
   try {
     const newUser: User = {
@@ -27,29 +42,34 @@ router.post('/signup', async (req: Request, res: Response) => {
       password: hashedPassword,
       firstName: req.body.firstName,
       lastName: req.body.lastName,
-      email: req.body.email
+      email: req.body.email,
     };
     const dbRes = await createUser(newUser);
     const userId = dbRes.rows[0]?.id;
-		const session = await lucia.createSession(userId, {});
-		return res
-			.appendHeader('Set-Cookie', lucia.createSessionCookie(session.id).serialize()).status(200).end();
-	} catch (e) {
+    const session = await lucia.createSession(userId, {});
+    return res
+      .appendHeader(
+        "Set-Cookie",
+        lucia.createSessionCookie(session.id).serialize(),
+      )
+      .status(200)
+      .end();
+  } catch (e) {
     // TODO: Check for errors
     console.log(e);
-		// if (e instanceof SqliteError && e.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-		// 	const html = await renderPage({
-		// 		username_value: username,
-		// 		error: 'Username already used'
-		// 	});
-		// 	return res.setHeader('Content-Type', 'text/html').status(400).send(html);
-		// }
-		// const html = await renderPage({
-		// 	username_value: username,
-		// 	error: 'An unknown error occurred'
-		// });
-		// return res.setHeader('Content-Type', 'text/html').status(500).send(html);
-	}
+    // if (e instanceof SqliteError && e.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+    // 	const html = await renderPage({
+    // 		username_value: username,
+    // 		error: 'Username already used'
+    // 	});
+    // 	return res.setHeader('Content-Type', 'text/html').status(400).send(html);
+    // }
+    // const html = await renderPage({
+    // 	username_value: username,
+    // 	error: 'An unknown error occurred'
+    // });
+    // return res.setHeader('Content-Type', 'text/html').status(500).send(html);
+  }
 });
 
 // router.post('/signin', (req, res) => {
@@ -97,8 +117,6 @@ router.post('/signup', async (req: Request, res: Response) => {
 //     .redirect('/');
 // });
 
-router.post('/signout', (req, res) => {
-
-});
+router.post("/signout", (req, res) => {});
 
 export default router;
