@@ -1,6 +1,7 @@
 import pool from './db.js';
 
 type User = {
+    id?: string;
     firstName: string;
     lastName: string;
     email: string;
@@ -11,6 +12,7 @@ type User = {
 };
 
 type dbUser = {
+    id: string;
     first_name: string;
     last_name: string;
     email: string;
@@ -22,6 +24,7 @@ type dbUser = {
 
 const dbUserToUser = (dbUser: dbUser) => {
     return {
+        id: dbUser.id,
         firstName: dbUser.first_name,
         lastName: dbUser.last_name,
         email: dbUser.email,
@@ -44,7 +47,29 @@ const createUser = async ({
         values: [firstName, lastName, email, username, password],
     };
     const res = await pool.query(query);
-    return res;
+    if (res.rowCount) return dbUserToUser(res.rows[0]);
+    return null;
+};
+
+/**
+ * Verify a users email. This must be completed before a user can use the system
+ * @param id User id
+ * @returns True if the user was successfully verified, else false
+ */
+const verifyUser = async (id: string) => {
+    const query = {
+        text: 'UPDATE user_account SET is_verified = TRUE WHERE id = $1',
+        values: [id],
+    };
+    try {
+        await pool.query(query);
+        return true;
+    } catch (e: any) {
+        console.error(
+            `Error: Could not verify email for user (${id}). ${e.message ?? ''}`,
+        );
+        return false;
+    }
 };
 
 /**
@@ -86,4 +111,11 @@ const getUserById = async (id: string) => {
     else return null;
 };
 
-export { User, createUser, getUserByEmail, getUserByUsername, getUserById };
+export {
+    User,
+    createUser,
+    verifyUser,
+    getUserByEmail,
+    getUserByUsername,
+    getUserById,
+};

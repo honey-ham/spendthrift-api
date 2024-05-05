@@ -2,35 +2,81 @@ import { Router, type Request, type Response } from 'express';
 import { Argon2id } from 'oslo/password';
 
 import { lucia } from '../lib/auth.js';
-import { isValidUsername, isValidPassword } from '../utils/validation.js';
+import {
+    isValidUsername,
+    isValidPassword,
+    isValidEmail,
+    isValidFirstName,
+    isValidLastName,
+} from '../utils/validation.js';
 import {
     type User,
     createUser,
+    verifyUser,
     getUserByUsername,
     getUserByEmail,
+    getUserById,
 } from '../lib/users.js';
-import { sendEmail } from '../lib/email.js';
+import { sendVerificationEmail } from '../lib/email.js';
 
 const router = Router();
 
+router.post('/verifyEmail/:userId', async (req: Request, res: Response) => {
+    const id = req.params.userId ?? null;
+    if (!id) return res.status(400).json({ error: 'Unable to verify email' });
+    const dbRes = await verifyUser(id);
+    if (dbRes)
+        return res.status(200).json({
+            message: "User's email was successfully verified",
+        });
+    return res.status(400).json({ error: 'Unable to verify email' });
+});
+
+router.get(
+    '/resendVerificationEmail/:userId',
+    async (req: Request, res: Response) => {
+        const id = req.params.userID ?? null;
+        if (!id)
+            return res
+                .status(400)
+                .json({ error: 'Unable to send verification email' });
+        const dbRes = await getUserById(id);
+        if (dbRes === null)
+            return res
+                .status(400)
+                .json({ error: 'Unable to send verification email' });
+
+        await sendVerificationEmail({
+            to: dbRes.email,
+            firstName: dbRes?.firstName,
+            userId: id,
+        });
+    },
+);
+
 router.post('/signup', async (req: Request, res: Response) => {
-    // console.log(req.body);
+    const firstName: string | null = req.body.firstName ?? null;
+    const lastName: string | null = req.body.firstName ?? null;
     const username: string | null = req.body.username ?? null;
+    const password: string | null = req.body.password ?? null;
+    const passwordConfirm: string | null = req.body.passwordConfirm ?? null;
+    const email: string | null = req.body.email ?? null;
+    const emailConfirm: string | null = req.body.emailConfirm ?? null;
+
+    if (!firstName || !isValidFirstName(firstName))
+        return res.status(400).json({ error: `Illegal first name` });
+    if (!lastName || !isValidLastName(lastName))
+        return res.status(400).json({ error: `Illegal last name` });
     if (!username || !isValidUsername(username))
         return res.status(400).json({ error: `Illegal username` });
-
-    const password: string | null = req.body.password ?? null;
     if (!password || !isValidPassword(password))
         return res.status(400).json({ error: `Illegal password` });
-
-    console.log(
-        await sendEmail({
-            to: 'sgharr304@gmail.com',
-            subject: 'THIS IS A TEST',
-            text: 'Sam\n\nhere is some more text\n\n',
-        }),
-    );
-    return res.end();
+    if (!passwordConfirm || password !== passwordConfirm)
+        return res.status(400).json({ error: `Passwords didn't match` });
+    if (!email || !isValidEmail(email))
+        return res.status(400).json({ error: `Illegal email` });
+    if (!emailConfirm || email !== emailConfirm)
+        return res.status(400).json({ error: `Emails didn't match` });
 
     // Checking for existing users with the same username or password
     let prexistingUser = await getUserByUsername(username);
@@ -46,20 +92,27 @@ router.post('/signup', async (req: Request, res: Response) => {
         const newUser: User = {
             username,
             password: hashedPassword,
-            firstName: req.body.firstName,
-            lastName: req.body.lastName,
-            email: req.body.email,
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
         };
         const dbRes = await createUser(newUser);
-        const userId = dbRes.rows[0]?.id;
-        const session = await lucia.createSession(userId, {});
+        if (dbRes === null || dbRes.id === undefined)
+            return res
+                .status(500)
+                .json({ error: `Unable to insert user into db` });
+        const session = await lucia.createSession(dbRes.id, {});
+
+        // Send email to user to verify the email address they provided
+        await sendVerificationEmail({ to: email, firstName, userId: dbRes.id });
+
         return res
             .appendHeader(
                 'Set-Cookie',
                 lucia.createSessionCookie(session.id).serialize(),
             )
             .status(200)
-            .end();
+            .json({ message: 'Sign-up successful' });
     } catch (e) {
         // TODO: Check for errors
         console.log(e);
