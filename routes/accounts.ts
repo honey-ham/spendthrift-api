@@ -24,33 +24,41 @@ const router = Router();
 router.post('/verifyEmail/:userId', async (req: Request, res: Response) => {
     const id = req.params.userId ?? null;
     if (!id) return res.status(400).json({ error: 'Unable to verify email' });
-    const dbRes = await verifyUser(id);
-    if (dbRes)
+    const isUserVerified = await verifyUser(id);
+    if (isUserVerified)
         return res.status(200).json({
             message: "User's email was successfully verified",
         });
     return res.status(400).json({ error: 'Unable to verify email' });
 });
 
+// TODO: Add a date field to db to remember when the last email was sent (To prevent spamming)
 router.get(
     '/resendVerificationEmail/:userId',
     async (req: Request, res: Response) => {
-        const id = req.params.userID ?? null;
+        const id = req.params.userId ?? null;
         if (!id)
             return res
                 .status(400)
                 .json({ error: 'Unable to send verification email' });
-        const dbRes = await getUserById(id);
-        if (dbRes === null)
+        const user = await getUserById(id);
+        if (user === null)
             return res
                 .status(400)
                 .json({ error: 'Unable to send verification email' });
 
-        await sendVerificationEmail({
-            to: dbRes.email,
-            firstName: dbRes?.firstName,
-            userId: id,
-        });
+        if (
+            (await sendVerificationEmail({
+                to: user.email,
+                firstName: user.firstName,
+                userId: id,
+            })) === null
+        )
+            return res
+                .status(400)
+                .json({ error: 'Unable to send verification email' });
+        else
+            return res.status(200).json({ message: 'Sent verification email' });
     },
 );
 
@@ -114,68 +122,45 @@ router.post('/signup', async (req: Request, res: Response) => {
             .status(200)
             .json({ message: 'Sign-up successful' });
     } catch (e) {
-        // TODO: Check for errors
-        console.log(e);
-        // if (e instanceof SqliteError && e.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-        // 	const html = await renderPage({
-        // 		username_value: username,
-        // 		error: 'Username already used'
-        // 	});
-        // 	return res.setHeader('Content-Type', 'text/html').status(400).send(html);
-        // }
-        // const html = await renderPage({
-        // 	username_value: username,
-        // 	error: 'An unknown error occurred'
-        // });
-        // return res.setHeader('Content-Type', 'text/html').status(500).send(html);
+        console.error(e);
     }
 });
 
-// router.post('/signin', (req, res) => {
-//   const username: string | null = req.body.username ?? null;
-//   if (!username || username.length < 3 || username.length > 31 || !/^[a-z0-9_-]+$/.test(username)) {
-//     const html = await renderPage({
-//       username_value: username ?? '',
-//       error: 'Invalid password'
-//     });
-//     return res.setHeader('Content-Type', 'text/html').status(400).send(html);
-//   }
-//   const password: string | null = req.body.password ?? null;
-//   if (!password || password.length < 6 || password.length > 255) {
-//     const html = await renderPage({
-//       username_value: username,
-//       error: 'Invalid password'
-//     });
-//     return res.setHeader('Content-Type', 'text/html').status(400).send(html);
-//   }
+router.post('/signin', async (req, res) => {
+    const username: string | null = req.body.username ?? null;
+    const password: string | null = req.body.password ?? null;
 
-//   const existingUser = db.prepare('SELECT * FROM user WHERE username = ?').get(username) as
-//     | DatabaseUser
-//     | undefined;
-//   if (!existingUser) {
-//     const html = await renderPage({
-//       username_value: username,
-//       error: 'Incorrect username or password'
-//     });
-//     return res.setHeader('Content-Type', 'text/html').status(400).send(html);
-//   }
+    if (!username || !isValidUsername(username))
+        return res.status(400).json({ error: `Illegal username` });
+    if (!password || !isValidPassword(password))
+        return res.status(400).json({ error: `Illegal password` });
 
-//   const validPassword = await new Argon2id().verify(existingUser.password, password);
-//   if (!validPassword) {
-//     const html = await renderPage({
-//       username_value: username,
-//       error: 'Incorrect username or password'
-//     });
-//     return res.setHeader('Content-Type', 'text/html').status(400).send(html);
-//   }
+    const user = await getUserByUsername(username);
 
-//   const session = await lucia.createSession(existingUser.id, {});
-//   res
-//     .appendHeader('Set-Cookie', lucia.createSessionCookie(session.id).serialize())
-//     .appendHeader('Location', '/')
-//     .redirect('/');
-// });
+    if (!user || user.id === undefined)
+        return res.status(400).json({ error: 'Invalid username or password' });
 
-router.post('/signout', (req, res) => {});
+    const validPassword = await new Argon2id().verify(user.password, password);
+    if (!validPassword)
+        return res.status(400).json({ error: 'Invalid username or password' });
+
+    const session = await lucia.createSession(user.id, {});
+    return res
+        .appendHeader(
+            'Set-Cookie',
+            lucia.createSessionCookie(session.id).serialize(),
+        )
+        .status(200)
+        .json({ message: 'Sign-in successful' });
+});
+
+router.post('/signout', async (_, res) => {
+    if (!res.locals.session) return res.status(401).end();
+    await lucia.invalidateSession(res.locals.session.id);
+    return res
+        .status(200)
+        .setHeader('Set-Cookie', lucia.createBlankSessionCookie().serialize())
+        .json({ message: 'Sign-out successful' });
+});
 
 export default router;

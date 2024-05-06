@@ -64,10 +64,8 @@ const verifyUser = async (id: string) => {
     try {
         await pool.query(query);
         return true;
-    } catch (e: any) {
-        console.error(
-            `Error: Could not verify email for user (${id}). ${e.message ?? ''}`,
-        );
+    } catch (e) {
+        console.error(`Error: Could not verify user (${id}).\n\n${e ?? ''}`);
         return false;
     }
 };
@@ -82,7 +80,7 @@ const getUserByEmail = async (email: string) => {
     };
     const res = await pool.query(query);
     if (res.rowCount) return dbUserToUser(res.rows[0]);
-    else return null;
+    return null;
 };
 
 /**
@@ -95,7 +93,7 @@ const getUserByUsername = async (username: string) => {
     };
     const res = await pool.query(query);
     if (res.rowCount) return dbUserToUser(res.rows[0]);
-    else return null;
+    return null;
 };
 
 /**
@@ -108,7 +106,7 @@ const getUserById = async (id: string) => {
     };
     const res = await pool.query(query);
     if (res.rowCount) return dbUserToUser(res.rows[0]);
-    else return null;
+    return null;
 };
 
 export {

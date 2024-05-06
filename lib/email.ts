@@ -30,15 +30,22 @@ const sendEmail = ({
     text?: string;
     html?: string;
 }) => {
-    return transporter.sendMail({
-        from: from || defaultFrom,
-        to,
-        cc,
-        bcc,
-        subject,
-        text: text || '',
-        html,
-    });
+    try {
+        return transporter.sendMail({
+            from: from || defaultFrom,
+            to,
+            cc,
+            bcc,
+            subject,
+            text: text || '',
+            html,
+        });
+    } catch (e) {
+        if (typeof e === 'string') console.error(e);
+        else if (e instanceof Error) console.error(e.message);
+        else console.error('Error: Unable to send email - sendEmail()');
+        return null;
+    }
 };
 
 const sendVerificationEmail = ({
