@@ -22,6 +22,7 @@ import { sendVerificationEmail } from '../lib/email.js';
 const router = Router();
 
 router.post('/verifyEmail/:userId', async (req: Request, res: Response) => {
+    if(!req.cookies.auth_session) res.status(401).json({ error: 'No user was logged in'});
     const id = req.params.userId ?? null;
     if (!id) return res.status(400).json({ error: 'Unable to verify email' });
     const isUserVerified = await verifyUser(id);
@@ -36,11 +37,19 @@ router.post('/verifyEmail/:userId', async (req: Request, res: Response) => {
 router.get(
     '/resendVerificationEmail/:userId',
     async (req: Request, res: Response) => {
+        if(!req.cookies.auth_session) return res.status(401).json({ error: 'No user was logged in'});
         const id = req.params.userId ?? null;
         if (!id)
             return res
                 .status(400)
                 .json({ error: 'Unable to send verification email' });
+        const { session, user: sessionUser } = await lucia.validateSession(req.cookies.auth_session);
+        // Intentionally not sending 401 so the person is able to keep guessing ids
+        if(sessionUser?.id !== id)
+            return res
+                .status(400)
+                .json({ error: 'Unable to send verification email' });
+
         const user = await getUserById(id);
         if (user === null)
             return res
@@ -145,22 +154,21 @@ router.post('/signin', async (req, res) => {
         return res.status(400).json({ error: 'Invalid username or password' });
 
     const session = await lucia.createSession(user.id, {});
+    const cookie = lucia.createSessionCookie(session.id);
     return res
-        .appendHeader(
-            'Set-Cookie',
-            lucia.createSessionCookie(session.id).serialize(),
-        )
+        .cookie(cookie.name, cookie.value, { ...cookie.attributes, signed: true } )
         .status(200)
         .json({ message: 'Sign-in successful' });
 });
 
 router.post('/signout', async (req, res) => {
-    if (!req.cookies.auth_session)
+    if (!req.signedCookies.auth_session)
         return res.status(401).json({ message: 'No user was signed in' });
-    await lucia.invalidateSession(req.cookies.auth_session);
+    await lucia.invalidateSession(req.signedCookies.auth_session);
+    const cookie = lucia.createBlankSessionCookie();
     return res
         .status(200)
-        .setHeader('Set-Cookie', lucia.createBlankSessionCookie().serialize())
+        .cookie(cookie.name, cookie.value)
         .json({ message: 'Sign-out successful' });
 });
 

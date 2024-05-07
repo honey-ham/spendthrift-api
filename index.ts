@@ -9,7 +9,7 @@ dotenv.config();
 
 const app: Express = express();
 app.use(express.json());
-app.use(cookieParser());
+app.use(cookieParser(getEnv('COOKIE_SECRET')));
 
 const port = getEnv('PORT') || 3000;
 
