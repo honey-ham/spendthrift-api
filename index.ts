@@ -1,14 +1,17 @@
 import express, { Express } from 'express';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 
 import accounts from './routes/accounts.js';
+import { getEnv } from './utils/misc.js';
 
 dotenv.config();
 
 const app: Express = express();
 app.use(express.json());
+app.use(cookieParser());
 
-const port = process.env.PORT || 3000;
+const port = getEnv('PORT') || 3000;
 
 app.use('/', accounts);
 

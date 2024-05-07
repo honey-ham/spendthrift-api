@@ -154,9 +154,10 @@ router.post('/signin', async (req, res) => {
         .json({ message: 'Sign-in successful' });
 });
 
-router.post('/signout', async (_, res) => {
-    if (!res.locals.session) return res.status(401).end();
-    await lucia.invalidateSession(res.locals.session.id);
+router.post('/signout', async (req, res) => {
+    if (!req.cookies.auth_session)
+        return res.status(401).json({ message: 'No user was signed in' });
+    await lucia.invalidateSession(req.cookies.auth_session);
     return res
         .status(200)
         .setHeader('Set-Cookie', lucia.createBlankSessionCookie().serialize())
