@@ -1,9 +1,12 @@
-import express, { Express } from 'express';
+import express, { Express, type Request, type Response } from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
+// import { verifyRequestOrigin } from 'lucia';
 
-import accounts from './routes/accounts.js';
+import accountRouter from './routes/accounts.js';
+import entryRouter from './routes/entry.js';
 import { getEnv } from './utils/misc.js';
+import { lucia } from './lib/auth.js';
 
 dotenv.config();
 
@@ -13,14 +16,51 @@ app.use(cookieParser(getEnv('COOKIE_SECRET')));
 
 const port = getEnv('PORT') || 3000;
 
-app.use('/', accounts);
-
-// app.get("/", async (req: Request, res: Response) => {
-//   const session = await lucia.createSession("817e9979-09b9-4691-96a1-12b2362a501c", {});
-//   console.log(session);
-//   // const result = await pool.query('SELECT * from human;')
-//   res.send(session);
+// Something to prevent CSRF written in the lucia docs
+// app.use((req, res, next) => {
+// 	if (req.method === "GET") {
+// 		return next();
+// 	}
+// 	const originHeader = req.headers.origin ?? null;
+// 	// NOTE: You may need to use `X-Forwarded-Host` instead
+// 	const hostHeader = req.headers.host ?? null;
+// 	if (!originHeader || !hostHeader || !verifyRequestOrigin(originHeader, [hostHeader])) {
+// 		return res.status(403).end();
+// 	}
 // });
+
+// Handles sign-in and sign-up
+app.use('/', entryRouter);
+
+app.use(async (req: Request, res: Response, next) => {
+    // Checking for session cookie
+    const sessionId = req.signedCookies.auth_session;
+    if (!sessionId)
+        return res.status(401).json({ error: 'No user is logged in' });
+
+    // Checking for valid session then updating/killing session if necessary
+    const { session, user } = await lucia.validateSession(sessionId);
+    if (session && session.fresh) {
+        const newCookie = lucia.createSessionCookie(session.id);
+        res.cookie(newCookie.name, newCookie.value, {
+            ...newCookie.attributes,
+            signed: true,
+        });
+    } else if (!session) {
+        const blankCookie = lucia.createBlankSessionCookie();
+        return res
+            .status(401)
+            .cookie(blankCookie.name, blankCookie.value, blankCookie.attributes)
+            .json({ error: 'No user is logged in' });
+    }
+
+    // User Id & session object will accessible from all endpoints that occur after this
+    res.locals.userId = user.id;
+    res.locals.session = session;
+    return next();
+});
+
+app.use('/', accountRouter);
 
 app.listen(port, () => {
     console.log(`[server]: Server is running at http://localhost:${port}`);

@@ -1,28 +1,14 @@
 import { Router, type Request, type Response } from 'express';
-import { Argon2id } from 'oslo/password';
 
 import { lucia } from '../lib/auth.js';
-import {
-    isValidUsername,
-    isValidPassword,
-    isValidEmail,
-    isValidFirstName,
-    isValidLastName,
-} from '../utils/validation.js';
-import {
-    type User,
-    createUser,
-    verifyUser,
-    getUserByUsername,
-    getUserByEmail,
-    getUserById,
-} from '../lib/users.js';
+import { verifyUser, getUserById } from '../lib/users.js';
 import { sendVerificationEmail } from '../lib/email.js';
 
 const router = Router();
 
 router.post('/verifyEmail/:userId', async (req: Request, res: Response) => {
-    if(!req.cookies.auth_session) res.status(401).json({ error: 'No user was logged in'});
+    if (!req.cookies.auth_session)
+        res.status(401).json({ error: 'No user was logged in' });
     const id = req.params.userId ?? null;
     if (!id) return res.status(400).json({ error: 'Unable to verify email' });
     const isUserVerified = await verifyUser(id);
@@ -37,15 +23,21 @@ router.post('/verifyEmail/:userId', async (req: Request, res: Response) => {
 router.get(
     '/resendVerificationEmail/:userId',
     async (req: Request, res: Response) => {
-        if(!req.cookies.auth_session) return res.status(401).json({ error: 'No user was logged in'});
+        // If no cookie no one was logged in
+        if (!req.cookies.auth_session)
+            return res.status(401).json({ error: 'No user was logged in' });
+
         const id = req.params.userId ?? null;
         if (!id)
             return res
                 .status(400)
                 .json({ error: 'Unable to send verification email' });
-        const { session, user: sessionUser } = await lucia.validateSession(req.cookies.auth_session);
+
+        const { session, user: sessionUser } = await lucia.validateSession(
+            req.cookies.auth_session,
+        );
         // Intentionally not sending 401 so the person is able to keep guessing ids
-        if(sessionUser?.id !== id)
+        if (sessionUser?.id !== id)
             return res
                 .status(400)
                 .json({ error: 'Unable to send verification email' });
@@ -71,104 +63,16 @@ router.get(
     },
 );
 
-router.post('/signup', async (req: Request, res: Response) => {
-    const firstName: string | null = req.body.firstName ?? null;
-    const lastName: string | null = req.body.firstName ?? null;
-    const username: string | null = req.body.username ?? null;
-    const password: string | null = req.body.password ?? null;
-    const passwordConfirm: string | null = req.body.passwordConfirm ?? null;
-    const email: string | null = req.body.email ?? null;
-    const emailConfirm: string | null = req.body.emailConfirm ?? null;
-
-    if (!firstName || !isValidFirstName(firstName))
-        return res.status(400).json({ error: `Illegal first name` });
-    if (!lastName || !isValidLastName(lastName))
-        return res.status(400).json({ error: `Illegal last name` });
-    if (!username || !isValidUsername(username))
-        return res.status(400).json({ error: `Illegal username` });
-    if (!password || !isValidPassword(password))
-        return res.status(400).json({ error: `Illegal password` });
-    if (!passwordConfirm || password !== passwordConfirm)
-        return res.status(400).json({ error: `Passwords didn't match` });
-    if (!email || !isValidEmail(email))
-        return res.status(400).json({ error: `Illegal email` });
-    if (!emailConfirm || email !== emailConfirm)
-        return res.status(400).json({ error: `Emails didn't match` });
-
-    // Checking for existing users with the same username or password
-    let prexistingUser = await getUserByUsername(username);
-    if (prexistingUser)
-        return res.status(400).json({ error: `Username already exists` });
-    prexistingUser = await getUserByEmail(req.body.email);
-    if (prexistingUser)
-        return res.status(400).json({ error: `Email already exists` });
-
-    const hashedPassword = await new Argon2id().hash(password);
-
-    try {
-        const newUser: User = {
-            username,
-            password: hashedPassword,
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
-        };
-        const dbRes = await createUser(newUser);
-        if (dbRes === null || dbRes.id === undefined)
-            return res
-                .status(500)
-                .json({ error: `Unable to insert user into db` });
-        const session = await lucia.createSession(dbRes.id, {});
-
-        // Send email to user to verify the email address they provided
-        await sendVerificationEmail({ to: email, firstName, userId: dbRes.id });
-
-        return res
-            .appendHeader(
-                'Set-Cookie',
-                lucia.createSessionCookie(session.id).serialize(),
-            )
-            .status(200)
-            .json({ message: 'Sign-up successful' });
-    } catch (e) {
-        console.error(e);
-    }
-});
-
-router.post('/signin', async (req, res) => {
-    const username: string | null = req.body.username ?? null;
-    const password: string | null = req.body.password ?? null;
-
-    if (!username || !isValidUsername(username))
-        return res.status(400).json({ error: `Illegal username` });
-    if (!password || !isValidPassword(password))
-        return res.status(400).json({ error: `Illegal password` });
-
-    const user = await getUserByUsername(username);
-
-    if (!user || user.id === undefined)
-        return res.status(400).json({ error: 'Invalid username or password' });
-
-    const validPassword = await new Argon2id().verify(user.password, password);
-    if (!validPassword)
-        return res.status(400).json({ error: 'Invalid username or password' });
-
-    const session = await lucia.createSession(user.id, {});
-    const cookie = lucia.createSessionCookie(session.id);
-    return res
-        .cookie(cookie.name, cookie.value, { ...cookie.attributes, signed: true } )
-        .status(200)
-        .json({ message: 'Sign-in successful' });
-});
-
 router.post('/signout', async (req, res) => {
+    console.log(res.locals);
     if (!req.signedCookies.auth_session)
         return res.status(401).json({ message: 'No user was signed in' });
     await lucia.invalidateSession(req.signedCookies.auth_session);
     const cookie = lucia.createBlankSessionCookie();
+    console.log(cookie);
     return res
         .status(200)
-        .cookie(cookie.name, cookie.value)
+        .cookie(cookie.name, cookie.value, cookie.attributes)
         .json({ message: 'Sign-out successful' });
 });
 
