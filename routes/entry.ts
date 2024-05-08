@@ -19,7 +19,7 @@ import {
     getUserByEmail,
     createUser,
     type User,
-} from '../lib/users.js';
+} from '../lib/user.js';
 import { sendVerificationEmail } from '../lib/email.js';
 
 const router = Router();

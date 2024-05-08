@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 // import { verifyRequestOrigin } from 'lucia';
 
-import accountRouter from './routes/accounts.js';
+import accountRouter from './routes/account.js';
 import entryRouter from './routes/entry.js';
 import { getEnv } from './utils/misc.js';
 import { lucia } from './lib/auth.js';
