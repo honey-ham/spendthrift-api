@@ -7,6 +7,7 @@ import accountRouter from './routes/account.js';
 import unknownAccountRouter from './routes/unknown-account.js';
 import { getEnv } from './utils/misc.js';
 import { lucia } from './lib/auth.js';
+import { getUserPermissions, getUserById, Permissions } from './lib/user.js';
 
 dotenv.config();
 
@@ -54,8 +55,17 @@ app.use(async (req: Request, res: Response, next) => {
             .json({ error: 'No user is logged in' });
     }
 
-    // User Id & session object will accessible from all endpoints that occur after this
-    res.locals.userId = user.id;
+    // user const above contains only id so grabbing all fields
+    const fullUser = await getUserById(user.id);
+    const permissions = await getUserPermissions(user.id);
+    if (!fullUser || !permissions)
+        return res.status(500).json({ error: 'Unable to find user' });
+
+    // Below fields will be accessible from any endpoint initialized after this middleware
+    res.locals.userId = fullUser.id;
+    res.locals.isSuperuser = permissions.includes(Permissions.Superuser);
+    res.locals.isLocked = fullUser.isLocked;
+    res.locals.isVerified = fullUser.isVerified;
     res.locals.session = session;
     return next();
 });

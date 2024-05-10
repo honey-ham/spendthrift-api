@@ -1,5 +1,10 @@
 import pool from './db.js';
 
+/** User permissions */
+enum Permissions {
+    Superuser = 'superuser',
+}
+
 /** Includes only user_account fields that are required */
 type UserNotNull = {
     firstName: string;
@@ -33,7 +38,9 @@ type dbUser = {
     last_verification_attempt: string | null;
 };
 
-const tableName = 'user_account';
+const userTable = 'user_account';
+const userPermissionTable = 'user_permissions';
+const permissionTable = 'permission';
 
 const dbUserToUser = (dbUser: dbUser) => {
     return {
@@ -60,7 +67,7 @@ const createUser = async ({
     password,
 }: UserNotNull) => {
     const query = {
-        text: `INSERT INTO ${tableName}(first_name, last_name, email, username, password) VALUES($1, $2, $3, $4, $5) RETURNING *`,
+        text: `INSERT INTO ${userTable}(first_name, last_name, email, username, password) VALUES($1, $2, $3, $4, $5) RETURNING *`,
         values: [firstName, lastName, email, username, password],
     };
     try {
@@ -83,7 +90,7 @@ const createUser = async ({
 const setVerificationAttemptDate = async (id: string) => {
     const date = Date.now(); // UNIX timestamp
     const query = {
-        text: `UPDATE ${tableName} SET last_verification_attempt = $1 WHERE id = $2`,
+        text: `UPDATE ${userTable} SET last_verification_attempt = $1 WHERE id = $2`,
         values: [date, id],
     };
     try {
@@ -103,7 +110,7 @@ const setVerificationAttemptDate = async (id: string) => {
  */
 const verifyUser = async (id: string) => {
     const query = {
-        text: `UPDATE ${tableName} SET is_verified = TRUE WHERE id = $1`,
+        text: `UPDATE ${userTable} SET is_verified = TRUE WHERE id = $1`,
         values: [id],
     };
     try {
@@ -120,7 +127,7 @@ const verifyUser = async (id: string) => {
  */
 const getUserByEmail = async (email: string) => {
     const query = {
-        text: `SELECT * FROM ${tableName} WHERE email=$1`,
+        text: `SELECT * FROM ${userTable} WHERE email=$1`,
         values: [email],
     };
     try {
@@ -139,7 +146,7 @@ const getUserByEmail = async (email: string) => {
  */
 const getUserByUsername = async (username: string) => {
     const query = {
-        text: `SELECT * FROM ${tableName} WHERE username=$1`,
+        text: `SELECT * FROM ${userTable} WHERE username=$1`,
         values: [username],
     };
     try {
@@ -160,7 +167,7 @@ const getUserByUsername = async (username: string) => {
  */
 const getUserById = async (id: string) => {
     const query = {
-        text: `SELECT *, last_verification_attempt::text FROM ${tableName} WHERE id=$1`,
+        text: `SELECT *, last_verification_attempt::text FROM ${userTable} WHERE id=$1`,
         values: [id],
     };
     try {
@@ -174,7 +181,26 @@ const getUserById = async (id: string) => {
     }
 };
 
+/**
+ * @returns List of string permissions for the passed user id. Empty list implies no elevated permissions above default. Null implies failure to retrieve
+ */
+const getUserPermissions = async (id: string) => {
+    const query = {
+        text: `SELECT p.name FROM ${userTable} as u, ${userPermissionTable} as up, ${permissionTable} as p WHERE u.id = $1 AND u.id = up.user_id AND up.permission_id = p.id;`,
+        values: [id],
+    };
+    try {
+        const res = await pool.query(query);
+        if (res.rowCount === 0) return [];
+        return res.rows.map((row) => row.name);
+    } catch (e) {
+        console.error(e);
+        return null;
+    }
+};
+
 export {
+    Permissions,
     User,
     UserNotNull,
     createUser,
@@ -183,4 +209,5 @@ export {
     getUserByEmail,
     getUserByUsername,
     getUserById,
+    getUserPermissions,
 };

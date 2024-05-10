@@ -18,8 +18,11 @@ const router = Router();
 router.post('/verifyEmail/:userId?', async (req: Request, res: Response) => {
     const id = req.params.userId ?? res.locals.userId;
 
-    // TODO: Make a superuser permission enable this
-    if (req.params.userId && res.locals.userId !== req.params.userId)
+    if (
+        !res.locals.isSuperuser &&
+        req.params.userId &&
+        res.locals.userId !== req.params.userId
+    )
         return res
             .status(401)
             .json({ error: 'You cannot verify another users account' });
@@ -32,14 +35,16 @@ router.post('/verifyEmail/:userId?', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Unable to verify email' });
 });
 
-// TODO: Add a date field to db to remember when the last email was sent (To prevent spamming)
 router.post(
     '/resendVerificationEmail/:userId?',
     async (req: Request, res: Response) => {
         const id = req.params.userId ?? res.locals.userId;
 
-        // TODO: Make a superuser permission enable this
-        if (req.params.userId && res.locals.userId !== req.params.userId)
+        if (
+            !res.locals.isSuperuser &&
+            req.params.userId &&
+            res.locals.userId !== req.params.userId
+        )
             return res
                 .status(401)
                 .json({ error: 'You cannot verify another users account' });
@@ -82,5 +87,7 @@ router.post('/signout', async (req, res) => {
         .cookie(cookie.name, cookie.value, cookie.attributes)
         .json({ message: 'Sign-out successful' });
 });
+
+// TODO: Get permssions for user
 
 export default router;
