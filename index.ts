@@ -4,7 +4,7 @@ import cookieParser from 'cookie-parser';
 // import { verifyRequestOrigin } from 'lucia';
 
 import accountRouter from './routes/account.js';
-import entryRouter from './routes/entry.js';
+import unknownAccountRouter from './routes/unknown-account.js';
 import { getEnv } from './utils/misc.js';
 import { lucia } from './lib/auth.js';
 
@@ -30,7 +30,7 @@ const port = getEnv('PORT') || 3000;
 // });
 
 // Handles sign-in and sign-up
-app.use('/', entryRouter);
+app.use('/', unknownAccountRouter);
 
 app.use(async (req: Request, res: Response, next) => {
     // Checking for session cookie

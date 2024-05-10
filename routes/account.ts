@@ -1,16 +1,29 @@
+/**
+ * Holds endpoints related to accounts where the caller IS authenticated
+ * Things like sign-out & verify email
+ */
 import { Router, type Request, type Response } from 'express';
 
 import { lucia } from '../lib/auth.js';
-import { verifyUser, getUserById } from '../lib/user.js';
+import {
+    verifyUser,
+    getUserById,
+    setVerificationAttemptDate,
+} from '../lib/user.js';
 import { sendVerificationEmail } from '../lib/email.js';
+import { msSinceDate } from '../utils/misc.js';
 
 const router = Router();
 
-router.post('/verifyEmail/:userId', async (req: Request, res: Response) => {
-    if (!req.cookies.auth_session)
-        res.status(401).json({ error: 'No user was logged in' });
-    const id = req.params.userId ?? null;
-    if (!id) return res.status(400).json({ error: 'Unable to verify email' });
+router.post('/verifyEmail/:userId?', async (req: Request, res: Response) => {
+    const id = req.params.userId ?? res.locals.userId;
+
+    // TODO: Make a superuser permission enable this
+    if (req.params.userId && res.locals.userId !== req.params.userId)
+        return res
+            .status(401)
+            .json({ error: 'You cannot verify another users account' });
+
     const isUserVerified = await verifyUser(id);
     if (isUserVerified)
         return res.status(200).json({
@@ -23,11 +36,10 @@ router.post('/verifyEmail/:userId', async (req: Request, res: Response) => {
 router.post(
     '/resendVerificationEmail/:userId?',
     async (req: Request, res: Response) => {
-        console.log('made it here');
         const id = req.params.userId ?? res.locals.userId;
 
         // TODO: Make a superuser permission enable this
-        if (req.params.useId && res.locals.userId !== req.params.useId)
+        if (req.params.userId && res.locals.userId !== req.params.userId)
             return res
                 .status(401)
                 .json({ error: 'You cannot verify another users account' });
@@ -37,8 +49,15 @@ router.post(
             return res
                 .status(400)
                 .json({ error: 'Unable to send verification email' });
-
-        if (
+        else if (user.isVerified)
+            return res.status(403).json({ error: 'You are already verified' });
+        else if (user.lastVerificationAttempt !== null) {
+            const ms = msSinceDate(user.lastVerificationAttempt);
+            if (ms <= 300000)
+                return res.status(403).json({
+                    error: `You cannot send another email verification for another ${(300000 - ms) / 1000}s`,
+                });
+        } else if (
             (await sendVerificationEmail({
                 to: user.email,
                 firstName: user.firstName,
@@ -48,8 +67,10 @@ router.post(
             return res
                 .status(400)
                 .json({ error: 'Unable to send verification email' });
-        else
+        else {
+            await setVerificationAttemptDate(user.id);
             return res.status(200).json({ message: 'Sent verification email' });
+        }
     },
 );
 

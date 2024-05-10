@@ -41,9 +41,7 @@ const sendEmail = ({
             html,
         });
     } catch (e) {
-        if (typeof e === 'string') console.error(e);
-        else if (e instanceof Error) console.error(e.message);
-        else console.error('Error: Unable to send email - sendEmail()');
+        console.error(e);
         return null;
     }
 };

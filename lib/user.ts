@@ -1,14 +1,23 @@
 import pool from './db.js';
 
-type User = {
-    id?: string;
+/** Includes only user_account fields that are required */
+type UserNotNull = {
     firstName: string;
     lastName: string;
     email: string;
     username: string;
     password: string;
-    /** Prevents a user from using their account */
-    isLocked?: boolean;
+};
+
+/** Includes ALL user_account fields */
+type User = UserNotNull & {
+    id: string;
+    /** Prevents a user from using their account (Admin control)*/
+    isLocked: boolean;
+    /** Indicates when a user has verified their email + Prevents a user from using their account */
+    isVerified: boolean;
+    /** Unix timestamp of the last verification sent to the user. Prevents spamming */
+    lastVerificationAttempt: number | null;
 };
 
 type dbUser = {
@@ -20,6 +29,8 @@ type dbUser = {
     password: string;
     /** Prevents a user from using their account */
     is_locked: boolean;
+    is_verified: boolean;
+    last_verification_attempt: string | null;
 };
 
 const tableName = 'user_account';
@@ -33,6 +44,10 @@ const dbUserToUser = (dbUser: dbUser) => {
         username: dbUser.username,
         password: dbUser.password,
         isLocked: dbUser.is_locked,
+        isVerified: dbUser.is_verified,
+        lastVerificationAttempt: dbUser.last_verification_attempt
+            ? Number(dbUser.last_verification_attempt)
+            : null,
     } as User;
 };
 
@@ -43,7 +58,7 @@ const createUser = async ({
     email,
     username,
     password,
-}: User) => {
+}: UserNotNull) => {
     const query = {
         text: `INSERT INTO ${tableName}(first_name, last_name, email, username, password) VALUES($1, $2, $3, $4, $5) RETURNING *`,
         values: [firstName, lastName, email, username, password],
@@ -54,22 +69,31 @@ const createUser = async ({
         console.error('Error: Could not create user (createUser())');
         return null;
     } catch (e) {
-        console.error(
-            `Error: Could not create user (createUser()).\n\n${e ?? ''}`,
-        );
+        console.error(e);
         return null;
     }
 };
 
-const setVerificationAttemptDate = (id: string) => {
-    const date = new Date().toISOString();
+/**
+ * Sets last_verification_attempt to the current date time. This is used to prevent
+ * verification emails from being spammed
+ * @param id User id
+ * @returns true if last_verification_attempt was set to the current date time
+ */
+const setVerificationAttemptDate = async (id: string) => {
+    const date = Date.now(); // UNIX timestamp
     const query = {
         text: `UPDATE ${tableName} SET last_verification_attempt = $1 WHERE id = $2`,
         values: [date, id],
     };
     try {
-        // TODO: Finish this function
-    } catch (e) {}
+        const res = await pool.query(query);
+        if (res.rowCount) return true;
+        return false;
+    } catch (e) {
+        console.error(e);
+        return false;
+    }
 };
 
 /**
@@ -86,7 +110,7 @@ const verifyUser = async (id: string) => {
         await pool.query(query);
         return true; // TODO: Need to check the return from pool.query to ensure that a row was updated
     } catch (e) {
-        console.error(`Error: Could not verify user (${id}).\n\n${e ?? ''}`);
+        console.error(e);
         return false;
     }
 };
@@ -105,9 +129,7 @@ const getUserByEmail = async (email: string) => {
         console.error('Error: Could not get user by email (getUserByEmail())');
         return null;
     } catch (e) {
-        console.error(
-            `Error: Could not get user by email (getUserByEmail()).\n\n${e ?? ''}`,
-        );
+        console.error(e);
         return null;
     }
 };
@@ -128,9 +150,7 @@ const getUserByUsername = async (username: string) => {
         );
         return null;
     } catch (e) {
-        console.error(
-            `Error: Could not get user by username (getUserByUsername()).\n\n${e ?? ''}`,
-        );
+        console.error(e);
         return null;
     }
 };
@@ -140,7 +160,7 @@ const getUserByUsername = async (username: string) => {
  */
 const getUserById = async (id: string) => {
     const query = {
-        text: `SELECT * FROM ${tableName} WHERE id=$1`,
+        text: `SELECT *, last_verification_attempt::text FROM ${tableName} WHERE id=$1`,
         values: [id],
     };
     try {
@@ -149,16 +169,16 @@ const getUserById = async (id: string) => {
         console.error('Error: Could not get user by id (getUserById())');
         return null;
     } catch (e) {
-        console.error(
-            `Error: Could not get user by id (getUserById()).\n\n${e ?? ''}`,
-        );
+        console.error(e);
         return null;
     }
 };
 
 export {
     User,
+    UserNotNull,
     createUser,
+    setVerificationAttemptDate,
     verifyUser,
     getUserByEmail,
     getUserByUsername,

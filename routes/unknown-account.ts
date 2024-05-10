@@ -1,6 +1,6 @@
 /**
- * Router to be used only for Sign-in and Sign-up...
- * These endpoints don't requre authenticaiton so I prefered they be kept separate
+ * Holds endpoints related to accounts where the caller is NOT authenticated
+ * Things like sign-up & sign-in
  */
 
 import { Router, type Request, type Response } from 'express';
@@ -18,7 +18,8 @@ import {
     getUserByUsername,
     getUserByEmail,
     createUser,
-    type User,
+    type UserNotNull,
+    setVerificationAttemptDate,
 } from '../lib/user.js';
 import { sendVerificationEmail } from '../lib/email.js';
 
@@ -59,7 +60,7 @@ router.post('/signup', async (req: Request, res: Response) => {
     const hashedPassword = await new Argon2id().hash(password);
 
     try {
-        const newUser: User = {
+        const newUser: UserNotNull = {
             username,
             password: hashedPassword,
             firstName: firstName,
@@ -75,6 +76,7 @@ router.post('/signup', async (req: Request, res: Response) => {
 
         // Send email to user to verify the email address they provided
         await sendVerificationEmail({ to: email, firstName, userId: dbRes.id });
+        await setVerificationAttemptDate(dbRes.id);
 
         return res
             .appendHeader(

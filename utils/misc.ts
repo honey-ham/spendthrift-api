@@ -13,4 +13,10 @@ const getEnv = (key: string) => {
     else return value;
 };
 
-export { getEnv };
+/**
+ * Returns the number of milliseconds between the passed unix timestamp and now
+ * @param unixTs Unix timestamp
+ */
+const msSinceDate = (unixTs: number) => Math.abs(Date.now() - unixTs);
+
+export { getEnv, msSinceDate };
