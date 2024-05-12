@@ -3,7 +3,14 @@ import pool from './db.js';
 /** User permissions */
 enum Permissions {
     Superuser = 'superuser',
-}
+    Normie = 'normie',
+};
+
+type Permission = {
+    id: string;
+    name: string;
+    description: string;
+};
 
 /** Includes only user_account fields that are required */
 type UserNotNull = {
@@ -23,15 +30,18 @@ type User = UserNotNull & {
     isVerified: boolean;
     /** Unix timestamp of the last verification sent to the user. Prevents spamming */
     lastVerificationAttempt: number | null;
+    permissionId: string;
 };
 
-type dbUser = {
+type DbUser = {
     id: string;
     first_name: string;
     last_name: string;
     email: string;
     username: string;
     password: string;
+    // User is only associated with one permission at a time
+    permission_id: string;
     /** Prevents a user from using their account */
     is_locked: boolean;
     is_verified: boolean;
@@ -39,10 +49,9 @@ type dbUser = {
 };
 
 const userTable = 'user_account';
-const userPermissionTable = 'user_permissions';
 const permissionTable = 'permission';
 
-const dbUserToUser = (dbUser: dbUser) => {
+const dbUserToUser = (dbUser: DbUser) => {
     return {
         id: dbUser.id,
         firstName: dbUser.first_name,
@@ -50,6 +59,7 @@ const dbUserToUser = (dbUser: dbUser) => {
         email: dbUser.email,
         username: dbUser.username,
         password: dbUser.password,
+        permissionId: dbUser.permission_id,
         isLocked: dbUser.is_locked,
         isVerified: dbUser.is_verified,
         lastVerificationAttempt: dbUser.last_verification_attempt
@@ -58,7 +68,11 @@ const dbUserToUser = (dbUser: dbUser) => {
     } as User;
 };
 
-/** Adds a new user to the database */
+/**
+ * Adds a new user to the database with 'Normie' permissions
+ * @param param0 UserNotNull object
+ * @returns User object
+ */
 const createUser = async ({
     firstName,
     lastName,
@@ -66,9 +80,22 @@ const createUser = async ({
     username,
     password,
 }: UserNotNull) => {
+    // Getting UUID of 'normie' permission... (Just the default permission for this app)
+    let normieId: string;
+    try {
+        const res = await pool.query({
+            text: `SELECT id from permission where name='normie'`,
+        });
+        if (!res.rowCount) return null;
+        normieId = res.rows[0].id;
+    } catch (e) {
+        console.error(e);
+        return null;
+    }
+
     const query = {
-        text: `INSERT INTO ${userTable}(first_name, last_name, email, username, password) VALUES($1, $2, $3, $4, $5) RETURNING *`,
-        values: [firstName, lastName, email, username, password],
+        text: `INSERT INTO ${userTable}(first_name, last_name, email, username, password, permission_id) VALUES($1, $2, $3, $4, $5, $6) RETURNING *`,
+        values: [firstName, lastName, email, username, password, normieId],
     };
     try {
         const res = await pool.query(query);
@@ -123,6 +150,8 @@ const verifyUser = async (id: string) => {
 };
 
 /**
+ * Gets user based on string email
+ * @param email String email relating to user
  * @returns User relating to the passed email or null
  */
 const getUserByEmail = async (email: string) => {
@@ -142,6 +171,8 @@ const getUserByEmail = async (email: string) => {
 };
 
 /**
+ * Gets user based on string username
+ * @param username String username relating to user
  * @returns User relating to the passed username or null
  */
 const getUserByUsername = async (username: string) => {
@@ -163,6 +194,8 @@ const getUserByUsername = async (username: string) => {
 };
 
 /**
+ * Gets user based on string id
+ * @param id String id relating to user
  * @returns User relating to the passed id or null
  */
 const getUserById = async (id: string) => {
@@ -182,17 +215,20 @@ const getUserById = async (id: string) => {
 };
 
 /**
- * @returns List of string permissions for the passed user id. Empty list implies no elevated permissions above default. Null implies failure to retrieve
+ * Gets a users permission level
+ * @param id User id
+ * @returns A permission object representing the user's permission level or 
+ * null implying that the function failed to get the permission
  */
 const getUserPermissions = async (id: string) => {
     const query = {
-        text: `SELECT p.name FROM ${userTable} as u, ${userPermissionTable} as up, ${permissionTable} as p WHERE u.id = $1 AND u.id = up.user_id AND up.permission_id = p.id;`,
+        text: `SELECT p.* FROM ${userTable} as u, ${permissionTable} as p WHERE u.id = $1 AND u.permission_id = p.id;`,
         values: [id],
     };
     try {
         const res = await pool.query(query);
-        if (res.rowCount === 0) return [];
-        return res.rows.map((row) => row.name);
+        if (res.rowCount === 0) return null;
+        return res.rows[0] as Permission;
     } catch (e) {
         console.error(e);
         return null;

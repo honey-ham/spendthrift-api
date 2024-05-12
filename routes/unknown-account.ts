@@ -58,7 +58,7 @@ router.post('/signup', async (req: Request, res: Response) => {
         return res.status(400).json({ error: `Email already exists` });
 
     const hashedPassword = await new Argon2id().hash(password);
-
+    console.log(hashedPassword);
     try {
         const newUser: UserNotNull = {
             username,
@@ -90,7 +90,7 @@ router.post('/signup', async (req: Request, res: Response) => {
     }
 });
 
-router.post('/signin', async (req, res) => {
+router.post('/signin', async (req: Request, res: Response) => {
     const username: string | null = req.body.username ?? null;
     const password: string | null = req.body.password ?? null;
 

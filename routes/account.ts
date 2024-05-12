@@ -2,6 +2,7 @@
  * Holds endpoints related to accounts where the caller IS authenticated
  * Things like sign-out & verify email
  */
+
 import { Router, type Request, type Response } from 'express';
 
 import { lucia } from '../lib/auth.js';
@@ -80,7 +81,7 @@ router.post(
     },
 );
 
-router.post('/signout', async (req, res) => {
+router.post('/signout', async (req: Request, res: Response) => {
     await lucia.invalidateSession(req.signedCookies.auth_session);
     const cookie = lucia.createBlankSessionCookie();
     return res
@@ -89,7 +90,7 @@ router.post('/signout', async (req, res) => {
         .json({ message: 'Sign-out successful' });
 });
 
-router.get('/permissions/:userId?', async (req, res) => {
+router.get('/permissions/:userId?', async (req: Request, res: Response) => {
     const id = req.params.userId ?? res.locals.userId;
 
     if (

@@ -63,7 +63,7 @@ app.use(async (req: Request, res: Response, next) => {
 
     // Below fields will be accessible from any endpoint initialized after this middleware
     res.locals.userId = fullUser.id;
-    res.locals.isSuperuser = permissions.includes(Permissions.Superuser);
+    res.locals.isSuperuser = permissions.name === Permissions.Superuser;
     res.locals.isLocked = fullUser.isLocked;
     res.locals.isVerified = fullUser.isVerified;
     res.locals.session = session;
