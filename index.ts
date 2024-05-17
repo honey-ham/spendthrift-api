@@ -34,44 +34,44 @@ const port = getEnv('PORT') || 3000;
 app.use('/', unknownAccountRouter);
 
 app.use(async (req: Request, res: Response, next) => {
-    // Checking for session cookie
-    const sessionId = req.signedCookies.auth_session;
-    if (!sessionId)
-        return res.status(401).json({ error: 'No user is logged in' });
+  // Checking for session cookie
+  const sessionId = req.signedCookies.auth_session;
+  if (!sessionId)
+    return res.status(401).json({ error: 'No user is logged in' });
 
-    // Checking for valid session then updating/killing session if necessary
-    const { session, user } = await lucia.validateSession(sessionId);
-    if (session && session.fresh) {
-        const newCookie = lucia.createSessionCookie(session.id);
-        res.cookie(newCookie.name, newCookie.value, {
-            ...newCookie.attributes,
-            signed: true,
-        });
-    } else if (!session) {
-        const blankCookie = lucia.createBlankSessionCookie();
-        return res
-            .status(401)
-            .cookie(blankCookie.name, blankCookie.value, blankCookie.attributes)
-            .json({ error: 'No user is logged in' });
-    }
+  // Checking for valid session then updating/killing session if necessary
+  const { session, user } = await lucia.validateSession(sessionId);
+  if (session && session.fresh) {
+    const newCookie = lucia.createSessionCookie(session.id);
+    res.cookie(newCookie.name, newCookie.value, {
+      ...newCookie.attributes,
+      signed: true,
+    });
+  } else if (!session) {
+    const blankCookie = lucia.createBlankSessionCookie();
+    return res
+      .status(401)
+      .cookie(blankCookie.name, blankCookie.value, blankCookie.attributes)
+      .json({ error: 'No user is logged in' });
+  }
 
-    // user const above contains only id so grabbing all fields
-    const fullUser = await getUserById(user.id);
-    const permissions = await getUserPermissions(user.id);
-    if (!fullUser || !permissions)
-        return res.status(500).json({ error: 'Unable to find user' });
+  // user const above contains only id so grabbing all fields
+  const fullUser = await getUserById(user.id);
+  const permissions = await getUserPermissions(user.id);
+  if (!fullUser || !permissions)
+    return res.status(500).json({ error: 'Unable to find user' });
 
-    // Below fields will be accessible from any endpoint initialized after this middleware
-    res.locals.userId = fullUser.id;
-    res.locals.isSuperuser = permissions.name === Permissions.Superuser;
-    res.locals.isLocked = fullUser.isLocked;
-    res.locals.isVerified = fullUser.isVerified;
-    res.locals.session = session;
-    return next();
+  // Below fields will be accessible from any endpoint initialized after this middleware
+  res.locals.userId = fullUser.id;
+  res.locals.isSuperuser = permissions.name === Permissions.Superuser;
+  res.locals.isLocked = fullUser.isLocked;
+  res.locals.isVerified = fullUser.isVerified;
+  res.locals.session = session;
+  return next();
 });
 
 app.use('/', accountRouter);
 
 app.listen(port, () => {
-    console.log(`[server]: Server is running at http://localhost:${port}`);
+  console.log(`[server]: Server is running at http://localhost:${port}`);
 });

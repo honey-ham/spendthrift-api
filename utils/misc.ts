@@ -5,12 +5,12 @@ import 'dotenv/config';
  * an env variable is missing
  */
 const getEnv = (key: string) => {
-    const value = process.env[key];
-    if (value === undefined || value === null)
-        throw Error(
-            `Missing environment variable '${key}'. This should be added to the root of the project in the '.env' file`,
-        );
-    else return value;
+  const value = process.env[key];
+  if (value === undefined || value === null)
+    throw Error(
+      `Missing environment variable '${key}'. This should be added to the root of the project in the '.env' file`,
+    );
+  else return value;
 };
 
 /**

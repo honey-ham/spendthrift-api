@@ -2,76 +2,72 @@ import pool from './db.js';
 
 /** User permissions */
 enum Permissions {
-    Superuser = 'superuser',
-    Normie = 'normie',
+  Superuser = 'superuser',
+  Normie = 'normie',
 }
 
 type Permission = {
-    id: string;
-    name: string;
-    description: string;
+  id: string;
+  name: string;
+  description: string;
 };
 
 /** Includes ALL user_account fields */
 type User = {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    username: string;
-    password: string;
-    /** Prevents a user from using their account (Admin control)*/
-    isLocked: boolean;
-    /** Indicates when a user has verified their email + Prevents a user from using their account */
-    isVerified: boolean;
-    /** Unix timestamp of the last verification sent to the user. Prevents spamming */
-    lastVerificationAttempt: number | null;
-    permissionId: string;
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  username: string;
+  password: string;
+  /** Prevents a user from using their account (Admin control)*/
+  isLocked: boolean;
+  /** Indicates when a user has verified their email + Prevents a user from using their account */
+  isVerified: boolean;
+  /** Unix timestamp of the last verification sent to the user. Prevents spamming */
+  lastVerificationAttempt: number | null;
+  permissionId: string;
 };
 
 /** Includes only user_account fields that are required */
 type MinimumUser = Omit<
-    User,
-    | 'id'
-    | 'isLocked'
-    | 'isVerified'
-    | 'lastVerificationAttempt'
-    | 'permissionId'
+  User,
+  'id' | 'isLocked' | 'isVerified' | 'lastVerificationAttempt' | 'permissionId'
 >;
 
 type DbUser = {
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    username: string;
-    password: string;
-    // User is only associated with one permission at a time
-    permission_id: string;
-    /** Prevents a user from using their account */
-    is_locked: boolean;
-    is_verified: boolean;
-    last_verification_attempt: string | null;
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  username: string;
+  password: string;
+  // User is only associated with one permission at a time
+  permission_id: string;
+  /** Prevents a user from using their account */
+  is_locked: boolean;
+  is_verified: boolean;
+  last_verification_attempt: string | null;
 };
 
 const userTable = 'user_account';
 const permissionTable = 'permission';
 
 const dbUserToUser = (dbUser: DbUser) => {
-    return {
-        id: dbUser.id,
-        firstName: dbUser.first_name,
-        lastName: dbUser.last_name,
-        email: dbUser.email,
-        username: dbUser.username,
-        password: dbUser.password,
-        permissionId: dbUser.permission_id,
-        isLocked: dbUser.is_locked,
-        isVerified: dbUser.is_verified,
-        lastVerificationAttempt: dbUser.last_verification_attempt
-            ? Number(dbUser.last_verification_attempt)
-            : null,
-    } as User;
+  return {
+    id: dbUser.id,
+    firstName: dbUser.first_name,
+    lastName: dbUser.last_name,
+    email: dbUser.email,
+    username: dbUser.username,
+    password: dbUser.password,
+    permissionId: dbUser.permission_id,
+    isLocked: dbUser.is_locked,
+    isVerified: dbUser.is_verified,
+    lastVerificationAttempt: dbUser.last_verification_attempt
+      ? Number(dbUser.last_verification_attempt)
+      : null,
+  } as User;
 };
 
 /**
@@ -80,38 +76,38 @@ const dbUserToUser = (dbUser: DbUser) => {
  * @returns User object
  */
 const createUser = async ({
-    firstName,
-    lastName,
-    email,
-    username,
-    password,
+  firstName,
+  lastName,
+  email,
+  username,
+  password,
 }: MinimumUser) => {
-    // Getting UUID of 'normie' permission... (Just the default permission for this app)
-    let normieId: string;
-    try {
-        const res = await pool.query({
-            text: `SELECT id from permission where name='normie'`,
-        });
-        if (!res.rowCount) return null;
-        normieId = res.rows[0].id;
-    } catch (e) {
-        console.error(e);
-        return null;
-    }
+  // Getting UUID of 'normie' permission... (Just the default permission for this app)
+  let normieId: string;
+  try {
+    const res = await pool.query({
+      text: `SELECT id from permission where name='normie'`,
+    });
+    if (!res.rowCount) return null;
+    normieId = res.rows[0].id;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
 
-    const query = {
-        text: `INSERT INTO ${userTable}(first_name, last_name, email, username, password, permission_id) VALUES($1, $2, $3, $4, $5, $6) RETURNING *`,
-        values: [firstName, lastName, email, username, password, normieId],
-    };
-    try {
-        const res = await pool.query(query);
-        if (res.rowCount) return dbUserToUser(res.rows[0]);
-        console.error('Error: Could not create user (createUser())');
-        return null;
-    } catch (e) {
-        console.error(e);
-        return null;
-    }
+  const query = {
+    text: `INSERT INTO ${userTable}(first_name, last_name, email, username, password, permission_id) VALUES($1, $2, $3, $4, $5, $6) RETURNING *`,
+    values: [firstName, lastName, email, username, password, normieId],
+  };
+  try {
+    const res = await pool.query(query);
+    if (res.rowCount) return dbUserToUser(res.rows[0]);
+    console.error('Error: Could not create user (createUser())');
+    return null;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
 };
 
 /**
@@ -121,19 +117,19 @@ const createUser = async ({
  * @returns true if last_verification_attempt was set to the current date time
  */
 const setVerificationAttemptDate = async (id: string) => {
-    const date = Date.now(); // UNIX timestamp
-    const query = {
-        text: `UPDATE ${userTable} SET last_verification_attempt = $1 WHERE id = $2`,
-        values: [date, id],
-    };
-    try {
-        const res = await pool.query(query);
-        if (res.rowCount) return true;
-        return false;
-    } catch (e) {
-        console.error(e);
-        return false;
-    }
+  const date = Date.now(); // UNIX timestamp
+  const query = {
+    text: `UPDATE ${userTable} SET last_verification_attempt = $1 WHERE id = $2`,
+    values: [date, id],
+  };
+  try {
+    const res = await pool.query(query);
+    if (res.rowCount) return true;
+    return false;
+  } catch (e) {
+    console.error(e);
+    return false;
+  }
 };
 
 /**
@@ -142,17 +138,17 @@ const setVerificationAttemptDate = async (id: string) => {
  * @returns True if the user was successfully verified, else false
  */
 const verifyUser = async (id: string) => {
-    const query = {
-        text: `UPDATE ${userTable} SET is_verified = TRUE WHERE id = $1`,
-        values: [id],
-    };
-    try {
-        await pool.query(query);
-        return true; // TODO: Need to check the return from pool.query to ensure that a row was updated
-    } catch (e) {
-        console.error(e);
-        return false;
-    }
+  const query = {
+    text: `UPDATE ${userTable} SET is_verified = TRUE WHERE id = $1`,
+    values: [id],
+  };
+  try {
+    await pool.query(query);
+    return true; // TODO: Need to check the return from pool.query to ensure that a row was updated
+  } catch (e) {
+    console.error(e);
+    return false;
+  }
 };
 
 /**
@@ -161,19 +157,19 @@ const verifyUser = async (id: string) => {
  * @returns User relating to the passed email or null
  */
 const getUserByEmail = async (email: string) => {
-    const query = {
-        text: `SELECT * FROM ${userTable} WHERE email=$1`,
-        values: [email],
-    };
-    try {
-        const res = await pool.query(query);
-        if (res.rowCount) return dbUserToUser(res.rows[0]);
-        console.error('Error: Could not get user by email (getUserByEmail())');
-        return null;
-    } catch (e) {
-        console.error(e);
-        return null;
-    }
+  const query = {
+    text: `SELECT * FROM ${userTable} WHERE email=$1`,
+    values: [email],
+  };
+  try {
+    const res = await pool.query(query);
+    if (res.rowCount) return dbUserToUser(res.rows[0]);
+    console.error('Error: Could not get user by email (getUserByEmail())');
+    return null;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
 };
 
 /**
@@ -182,21 +178,21 @@ const getUserByEmail = async (email: string) => {
  * @returns User relating to the passed username or null
  */
 const getUserByUsername = async (username: string) => {
-    const query = {
-        text: `SELECT * FROM ${userTable} WHERE username=$1`,
-        values: [username],
-    };
-    try {
-        const res = await pool.query(query);
-        if (res.rowCount) return dbUserToUser(res.rows[0]);
-        console.error(
-            'Error: Could not get user by username (getUserByUsername())',
-        );
-        return null;
-    } catch (e) {
-        console.error(e);
-        return null;
-    }
+  const query = {
+    text: `SELECT * FROM ${userTable} WHERE username=$1`,
+    values: [username],
+  };
+  try {
+    const res = await pool.query(query);
+    if (res.rowCount) return dbUserToUser(res.rows[0]);
+    console.error(
+      'Error: Could not get user by username (getUserByUsername())',
+    );
+    return null;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
 };
 
 /**
@@ -205,19 +201,19 @@ const getUserByUsername = async (username: string) => {
  * @returns User relating to the passed id or null
  */
 const getUserById = async (id: string) => {
-    const query = {
-        text: `SELECT *, last_verification_attempt::text FROM ${userTable} WHERE id=$1`,
-        values: [id],
-    };
-    try {
-        const res = await pool.query(query);
-        if (res.rowCount) return dbUserToUser(res.rows[0]);
-        console.error('Error: Could not get user by id (getUserById())');
-        return null;
-    } catch (e) {
-        console.error(e);
-        return null;
-    }
+  const query = {
+    text: `SELECT *, last_verification_attempt::text FROM ${userTable} WHERE id=$1`,
+    values: [id],
+  };
+  try {
+    const res = await pool.query(query);
+    if (res.rowCount) return dbUserToUser(res.rows[0]);
+    console.error('Error: Could not get user by id (getUserById())');
+    return null;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
 };
 
 /**
@@ -227,29 +223,29 @@ const getUserById = async (id: string) => {
  * null implying that the function failed to get the permission
  */
 const getUserPermissions = async (id: string) => {
-    const query = {
-        text: `SELECT p.* FROM ${userTable} as u, ${permissionTable} as p WHERE u.id = $1 AND u.permission_id = p.id;`,
-        values: [id],
-    };
-    try {
-        const res = await pool.query(query);
-        if (res.rowCount === 0) return null;
-        return res.rows[0] as Permission;
-    } catch (e) {
-        console.error(e);
-        return null;
-    }
+  const query = {
+    text: `SELECT p.* FROM ${userTable} as u, ${permissionTable} as p WHERE u.id = $1 AND u.permission_id = p.id;`,
+    values: [id],
+  };
+  try {
+    const res = await pool.query(query);
+    if (res.rowCount === 0) return null;
+    return res.rows[0] as Permission;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
 };
 
 export {
-    Permissions,
-    User,
-    MinimumUser,
-    createUser,
-    setVerificationAttemptDate,
-    verifyUser,
-    getUserByEmail,
-    getUserByUsername,
-    getUserById,
-    getUserPermissions,
+  Permissions,
+  User,
+  MinimumUser,
+  createUser,
+  setVerificationAttemptDate,
+  verifyUser,
+  getUserByEmail,
+  getUserByUsername,
+  getUserById,
+  getUserPermissions,
 };
