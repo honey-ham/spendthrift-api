@@ -2,12 +2,19 @@ import { Router, type Request, type Response } from 'express';
 
 const router = Router();
 
-router.get('/purchases/:userId?', (req: Request, res: Response) => {});
+router.get('/purchase/all/:userId?', (req: Request, res: Response) => {});
 
-router.post('/purchases/create/', (req: Request, res: Response) => {});
+router.get(
+    '/purchase/:purchaseId/:userId?',
+    (req: Request, res: Response) => {},
+);
+
+router.post('/purchase', (req: Request, res: Response) => {});
+
+router.put('/purchase', (req: Request, res: Response) => {});
 
 router.delete(
-    '/purchases/:purchaseId/:userId?',
+    '/purchase/:purchaseId/:userId?',
     (req: Request, res: Response) => {},
 );
 

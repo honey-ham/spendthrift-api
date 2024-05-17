@@ -18,7 +18,7 @@ import {
     getUserByUsername,
     getUserByEmail,
     createUser,
-    type UserNotNull,
+    type MinimumUser,
     setVerificationAttemptDate,
 } from '../lib/user.js';
 import { sendVerificationEmail } from '../lib/email.js';
@@ -60,7 +60,7 @@ router.post('/signup', async (req: Request, res: Response) => {
     const hashedPassword = await new Argon2id().hash(password);
     console.log(hashedPassword);
     try {
-        const newUser: UserNotNull = {
+        const newUser: MinimumUser = {
             username,
             password: hashedPassword,
             firstName: firstName,

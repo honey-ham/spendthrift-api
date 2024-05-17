@@ -4,7 +4,7 @@ import pool from './db.js';
 enum Permissions {
     Superuser = 'superuser',
     Normie = 'normie',
-};
+}
 
 type Permission = {
     id: string;
@@ -12,18 +12,14 @@ type Permission = {
     description: string;
 };
 
-/** Includes only user_account fields that are required */
-type UserNotNull = {
+/** Includes ALL user_account fields */
+type User = {
+    id: string;
     firstName: string;
     lastName: string;
     email: string;
     username: string;
     password: string;
-};
-
-/** Includes ALL user_account fields */
-type User = UserNotNull & {
-    id: string;
     /** Prevents a user from using their account (Admin control)*/
     isLocked: boolean;
     /** Indicates when a user has verified their email + Prevents a user from using their account */
@@ -32,6 +28,16 @@ type User = UserNotNull & {
     lastVerificationAttempt: number | null;
     permissionId: string;
 };
+
+/** Includes only user_account fields that are required */
+type MinimumUser = Omit<
+    User,
+    | 'id'
+    | 'isLocked'
+    | 'isVerified'
+    | 'lastVerificationAttempt'
+    | 'permissionId'
+>;
 
 type DbUser = {
     id: string;
@@ -70,7 +76,7 @@ const dbUserToUser = (dbUser: DbUser) => {
 
 /**
  * Adds a new user to the database with 'Normie' permissions
- * @param param0 UserNotNull object
+ * @param param0 MinimumUser object
  * @returns User object
  */
 const createUser = async ({
@@ -79,7 +85,7 @@ const createUser = async ({
     email,
     username,
     password,
-}: UserNotNull) => {
+}: MinimumUser) => {
     // Getting UUID of 'normie' permission... (Just the default permission for this app)
     let normieId: string;
     try {
@@ -217,7 +223,7 @@ const getUserById = async (id: string) => {
 /**
  * Gets a users permission level
  * @param id User id
- * @returns A permission object representing the user's permission level or 
+ * @returns A permission object representing the user's permission level or
  * null implying that the function failed to get the permission
  */
 const getUserPermissions = async (id: string) => {
@@ -238,7 +244,7 @@ const getUserPermissions = async (id: string) => {
 export {
     Permissions,
     User,
-    UserNotNull,
+    MinimumUser,
     createUser,
     setVerificationAttemptDate,
     verifyUser,
