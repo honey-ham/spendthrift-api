@@ -79,7 +79,7 @@ const dbUserToUser = (dbUser: DbUser) => {
 /**
  * Adds a new user to the database with 'Normie' permissions
  * @param param0 MinimumUser object
- * @returns User object
+ * @returns User object or null if it failed
  */
 const createUser = async ({
   firstName,

@@ -59,7 +59,7 @@ router.post(
     else if (user.isVerified)
       return res.status(403).json({ error: 'You are already verified' });
     else if (user.lastVerificationAttempt !== null) {
-      const ms = msSinceDate(user.lastVerificationAttempt.getTime())
+      const ms = msSinceDate(user.lastVerificationAttempt.getTime());
       if (ms <= 300000)
         return res.status(403).json({
           error: `You cannot send another email verification for another ${(300000 - ms) / 1000}s`,

@@ -45,7 +45,7 @@ const dbPurchaseToPurchase = (dbPurchase: DbPurchase) => {
  * @param param0.cost Purchase cost
  * @param param0.date Purchase date
  * @param param0.userId User uuid associated with the purchase
- * @returns
+ * @returns Purchase object or null if it failed
  */
 const createPurchase = async ({
   name,
@@ -56,7 +56,7 @@ const createPurchase = async ({
   labelId,
 }: MinimumPurchase) => {
   const query = {
-    text: `INSERT INTO ${purchaseTable}(name, description, cost, date, userId, labelId) VALUES($1, $2, $3, $4, $5, $6) RETURNING *`,
+    text: `INSERT INTO ${purchaseTable}(name, description, cost, date, user_id, label_id) VALUES($1, $2, $3, $4, $5, $6) RETURNING *`,
     values: [name, description, cost, date, userId, labelId],
   };
 

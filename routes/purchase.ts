@@ -22,13 +22,13 @@ router.post('/purchase/:userId?', async (req: Request, res: Response) => {
   )
     return res
       .status(401)
-      .json({ error: 'You cannot verify another users account' });
+      .json({ error: 'You cannot create a purchase for another user' });
 
   const name: string | null = req.body.name ?? null;
   const description: string | null = req.body.description ?? null;
   let cost: number | string | null = req.body.cost ?? null;
   if (cost !== null) cost = Math.round(Number(cost) * 1000) / 1000; // Rounding to 3 decimal places
-  let date: number | string | null = req.body.date ?? null; // UNIX Timestamp
+  let date: string | null = req.body.date ?? null;
   if (date !== null) date = date?.toString();
   // Label name
   const label: string | null = req.body.label ?? null;
@@ -45,6 +45,11 @@ router.post('/purchase/:userId?', async (req: Request, res: Response) => {
     return res
       .status(400)
       .json({ error: 'Date is a required field for purchase' });
+  else if (isNaN(new Date(date) as unknown as number))
+    // Ehh kinda gross
+    return res.status(400).json({
+      error: `Invalid date format. Try something like ${new Date().toISOString()}`,
+    });
   else if (cost > 999999999999)
     return res.status(400).json({ error: 'Cost is too large to store' });
   else if (!label)
@@ -57,7 +62,7 @@ router.post('/purchase/:userId?', async (req: Request, res: Response) => {
   if (!labelObj)
     return res.status(400).json({ error: `Could not find label '${label}'` });
 
-  createPurchase({
+  const purchase = await createPurchase({
     name,
     description,
     cost,
@@ -65,6 +70,10 @@ router.post('/purchase/:userId?', async (req: Request, res: Response) => {
     userId: id,
     labelId: labelObj.id,
   } as MinimumPurchase);
+
+  if (!purchase)
+    return res.status(500).json({ error: 'Unable to create purchase' });
+  return res.status(200).json({ message: 'Purchase successfully created' });
 });
 
 router.put('/purchase', (req: Request, res: Response) => {});

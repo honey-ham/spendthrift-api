@@ -3,8 +3,9 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 // import { verifyRequestOrigin } from 'lucia';
 
-import accountRouter from './routes/account.js';
 import unknownAccountRouter from './routes/unknown-account.js';
+import accountRouter from './routes/account.js';
+import purchaseRouter from './routes/purchase.js';
 import { getEnv } from './utils/misc.js';
 import { lucia } from './lib/auth.js';
 import { getUserPermissions, getUserById, Permissions } from './lib/user.js';
@@ -71,6 +72,7 @@ app.use(async (req: Request, res: Response, next) => {
 });
 
 app.use('/', accountRouter);
+app.use('/', purchaseRouter);
 
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
