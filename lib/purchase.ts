@@ -15,12 +15,11 @@ type Purchase = {
 /** Purchase object that has omitted unrequired fields (Except for description) */
 type MinimumPurchase = Omit<Purchase, 'id'>;
 
-type DbPurchase = {
-  id: string;
-  name: string;
-  description: string | null;
-  cost: number;
-  date: string;
+/**
+ * Purchase object that uses snake_case rather than camelCase.
+ * This is to covert postges naming convention to js
+ */
+type DbPurchase = Omit<Purchase, 'userID' | 'labelId'> & {
   user_id: string;
   label_id: string;
 };

@@ -1,12 +1,18 @@
 import { Router, type Request, type Response } from 'express';
 
 import { createPurchase, type MinimumPurchase } from '../lib/purchase.js';
+import { getDefaultLabelByName } from '../lib/label.js';
 
 const router = Router();
 
 router.get('/purchase/all/:userId?', (req: Request, res: Response) => {});
 
-router.get('/purchase/:purchaseId/:userId?', (req: Request, res: Response) => {
+router.get(
+  '/purchase/:purchaseId/:userId?',
+  async (req: Request, res: Response) => {},
+);
+
+router.post('/purchase/:userId?', async (req: Request, res: Response) => {
   const id = req.params.userId ?? res.locals.userId;
 
   if (
@@ -24,19 +30,42 @@ router.get('/purchase/:purchaseId/:userId?', (req: Request, res: Response) => {
   if (cost !== null) cost = Math.round(Number(cost) * 1000) / 1000; // Rounding to 3 decimal places
   let date: number | string | null = req.body.date ?? null; // UNIX Timestamp
   if (date !== null) date = date?.toString();
+  // Label name
+  const label: string | null = req.body.label ?? null;
 
   if (!name)
-    res.status(400).json({ error: 'Name is a required field for purchase' });
+    return res
+      .status(400)
+      .json({ error: 'Name is a required field for purchase' });
   else if (!cost)
-    res.status(400).json({ error: 'Cost is a required field for purchase' });
+    return res
+      .status(400)
+      .json({ error: 'Cost is a required field for purchase' });
   else if (!date)
-    res.status(400).json({ error: 'Date is a required field for purchase' });
+    return res
+      .status(400)
+      .json({ error: 'Date is a required field for purchase' });
   else if (cost > 999999999999)
-    res.status(400).json({ error: 'Named is a required field for purchase' });
-  // createPurchase({ name, description, cost, date})
-});
+    return res.status(400).json({ error: 'Cost is too large to store' });
+  else if (!label)
+    return res
+      .status(400)
+      .json({ error: 'Label is a required field for purchase' });
 
-router.post('/purchase', (req: Request, res: Response) => {});
+  // Getting label id
+  const labelObj = await getDefaultLabelByName(label);
+  if (!labelObj)
+    return res.status(400).json({ error: `Could not find label '${label}'` });
+
+  createPurchase({
+    name,
+    description,
+    cost,
+    date,
+    userId: id,
+    labelId: labelObj.id,
+  } as MinimumPurchase);
+});
 
 router.put('/purchase', (req: Request, res: Response) => {});
 

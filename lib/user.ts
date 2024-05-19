@@ -35,19 +35,25 @@ type MinimumUser = Omit<
   'id' | 'isLocked' | 'isVerified' | 'lastVerificationAttempt' | 'permissionId'
 >;
 
-type DbUser = {
-  id: string;
+/**
+ * User object that uses snake_case rather than camelCase.
+ * This is to covert postges naming convention to js
+ */
+type DbUser = Omit<
+  User,
+  | 'firstName'
+  | 'lastName'
+  | 'isLocked'
+  | 'isVerified'
+  | 'lastVerificationAttempt'
+  | 'permissionId'
+> & {
   first_name: string;
   last_name: string;
-  email: string;
-  username: string;
-  password: string;
-  // User is only associated with one permission at a time
-  permission_id: string;
-  /** Prevents a user from using their account */
   is_locked: boolean;
   is_verified: boolean;
   last_verification_attempt: string | null;
+  permission_id: string;
 };
 
 const userTable = 'user_account';
