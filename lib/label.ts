@@ -75,4 +75,37 @@ const getDefaultLabelByName = async (name: string) => {
   }
 };
 
+// const getTest = async () => {
+//   const query = {
+//     text: 'SELECT * FROM test',
+//   };
+
+//   try {
+//     const res = await pool.query(query);
+//     if (res.rowCount) return res.rows;
+//     console.error('Error');
+//     return null;
+//   } catch (e) {
+//     console.error(e);
+//     return null;
+//   }
+// };
+
+// const createTest = async (date1: string, date2: string) => {
+//   const query = {
+//     text: 'INSERT INTO test(date, date2) values($1, $2)',
+//     values: [date1, date2]
+//   };
+
+//   try {
+//     const res = await pool.query(query);
+//     if (res.rowCount) return res.rows;
+//     console.error('Error');
+//     return null;
+//   } catch (e) {
+//     console.error(e);
+//     return null;
+//   }
+// };
+
 export { Label, MinimalLabel, getDefaultLabels, getDefaultLabelByName };

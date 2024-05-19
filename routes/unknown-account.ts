@@ -117,4 +117,11 @@ router.post('/signin', async (req: Request, res: Response) => {
     .json({ message: 'Sign-in successful' });
 });
 
+// router.get('/test', async (req, res) => {
+//     await createTest((new Date()).toISOString(), (new Date()).toISOString());
+
+//     console.log(await getTest());
+//     res.end();
+// })
+
 export default router;

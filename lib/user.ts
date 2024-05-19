@@ -24,8 +24,8 @@ type User = {
   isLocked: boolean;
   /** Indicates when a user has verified their email + Prevents a user from using their account */
   isVerified: boolean;
-  /** Unix timestamp of the last verification sent to the user. Prevents spamming */
-  lastVerificationAttempt: number | null;
+  /** Timestamp of the last verification sent to the user. Prevents spamming */
+  lastVerificationAttempt: Date | null;
   permissionId: string;
 };
 
@@ -71,7 +71,7 @@ const dbUserToUser = (dbUser: DbUser) => {
     isLocked: dbUser.is_locked,
     isVerified: dbUser.is_verified,
     lastVerificationAttempt: dbUser.last_verification_attempt
-      ? Number(dbUser.last_verification_attempt)
+      ? new Date(dbUser.last_verification_attempt)
       : null,
   } as User;
 };
@@ -123,7 +123,7 @@ const createUser = async ({
  * @returns true if last_verification_attempt was set to the current date time
  */
 const setVerificationAttemptDate = async (id: string) => {
-  const date = Date.now(); // UNIX timestamp
+  const date = new Date().toISOString();
   const query = {
     text: `UPDATE ${userTable} SET last_verification_attempt = $1 WHERE id = $2`,
     values: [date, id],
