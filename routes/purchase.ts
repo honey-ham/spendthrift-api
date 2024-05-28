@@ -1,16 +1,38 @@
 import { Router, type Request, type Response } from 'express';
 
-import { createPurchase, type MinimumPurchase } from '../lib/purchase.js';
+import {
+  createPurchase,
+  type MinimumPurchase,
+  getPurchasesByUserId,
+} from '../lib/purchase.js';
 import { getDefaultLabelByName } from '../lib/label.js';
 
 const router = Router();
 
-router.get('/purchase/all/:userId?', (req: Request, res: Response) => {});
+router.get('/purchase/:userId?', async (req: Request, res: Response) => {
+  const id = req.params.userId ?? res.locals.userId;
 
-router.get(
-  '/purchase/:purchaseId/:userId?',
-  async (req: Request, res: Response) => {},
-);
+  if (
+    !res.locals.isSuperuser &&
+    req.params.userId &&
+    res.locals.userId !== req.params.userId
+  )
+    return res
+      .status(401)
+      .json({ error: 'You cannot see another users purchases' });
+
+  const purchases = await getPurchasesByUserId(id);
+
+  if (!purchases)
+    return res.status(500).json({ error: 'Unable to get purchases' });
+  return res.status(200).json({ data: purchases });
+});
+
+// TODO: Get a specific purchase
+// router.get(
+//   '/purchase/:purchaseId/:userId?',
+//   async (req: Request, res: Response) => {},
+// );
 
 router.post('/purchase/:userId?', async (req: Request, res: Response) => {
   const id = req.params.userId ?? res.locals.userId;

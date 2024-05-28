@@ -72,6 +72,38 @@ const createPurchase = async ({
 };
 
 /**
+ * Updates an existing purchase. Specify user within Purchase obj
+ * @param purchase Purchase obj
+ * @returns Updated Purchase obj if successful, else null
+ */
+const updatePurchase = async (purchase: Purchase) => {
+  let count = 1;
+  let text = `UPDATE ${purchaseTable} SET `;
+  const values = [];
+  for (const key in purchase) {
+    if (key === 'id') continue;
+    else if (purchase[key as keyof Purchase] === undefined) continue;
+
+    text += `${key}=$${count++} `;
+    values.push(purchase[key as keyof Purchase]);
+  }
+  text += `WHERE user_id=$${count}`;
+  values.push(purchase.id);
+
+  const query = { text, values };
+
+  try {
+    const res = await pool.query(query);
+    if (res.rowCount) return dbPurchaseToPurchase(res.rows[0]);
+    console.error('Error: Could not update purchase (updatePurchase())');
+    return null;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+};
+
+/**
  * Deletes a purchase
  * @param purchaseId UUID of a purchase
  * @returns True if the purchase was successfully deleted, else false
@@ -100,7 +132,7 @@ const deletePurchase = async (purchaseId: string) => {
  */
 const getPurchasesByUserId = async (userId: string) => {
   const query = {
-    text: `SELECT * FROM ${purchaseTable} WHERE user_id=$1`,
+    text: `SELECT * FROM ${purchaseTable} WHERE user_id=$1 ORDER BY date`,
     values: [userId],
   };
 
@@ -121,10 +153,70 @@ const getPurchasesByUserId = async (userId: string) => {
   }
 };
 
+/**
+ * Gets all purchases between the dates provided for the user referenced
+ * @param param0.userId User id
+ * @param param0.start Optional start date (Inclusive)
+ * @param param0.end Optional end date (Inclusive)
+ * @returns All Purchase obj between the start and end date for the user id provided
+ */
+const getPurchasesByUserIdAndDate = async ({
+  userId,
+  start,
+  end,
+}: {
+  userId: string;
+  start: Date | undefined;
+  end: Date | undefined;
+}) => {
+  let query;
+  if (end && !start) {
+    query = {
+      text: `SELECT * FROM ${purchaseTable} WHERE user_id=$1 AND date <= $3 ORDER BY date`,
+      values: [userId, end.toISOString()],
+    };
+  } else if (!end && start) {
+    query = {
+      text: `SELECT * FROM ${purchaseTable} WHERE user_id=$1 AND date >= $2 ORDER BY date`,
+      values: [userId, start.toISOString()],
+    };
+  } else if (end && start) {
+    query = {
+      text: `SELECT * FROM ${purchaseTable} WHERE user_id=$1 AND date >= $2 AND date <= $3 ORDER BY date`,
+      values: [userId, start.toISOString(), end.toISOString()],
+    };
+  } else {
+    query = {
+      text: `SELECT * FROM ${purchaseTable} WHERE user_id=$1 ORDER BY date`,
+      values: [userId],
+    };
+  }
+
+  try {
+    const res = await pool.query(query);
+    if (res.rowCount) {
+      const listOfPurchases: Purchase[] = [];
+      for (const row of res.rows) {
+        listOfPurchases.push(dbPurchaseToPurchase(row));
+      }
+      return listOfPurchases;
+    }
+    console.error(
+      'Error: Could not get purchases (getPurchasesByUserIdAndDate())',
+    );
+    return null;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+};
+
 export {
   Purchase,
   MinimumPurchase,
   createPurchase,
+  updatePurchase,
   deletePurchase,
   getPurchasesByUserId,
+  getPurchasesByUserIdAndDate,
 };
