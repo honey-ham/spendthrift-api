@@ -6,8 +6,7 @@ type Purchase = {
   name: string;
   description: string | null;
   cost: number;
-  /** Unix timestamp */
-  date: string;
+  date: Date;
   userId: string;
   labelId: string;
 };
@@ -32,7 +31,7 @@ const dbPurchaseToPurchase = (dbPurchase: DbPurchase) => {
     name: dbPurchase.name,
     description: dbPurchase.description,
     cost: Number(dbPurchase.cost),
-    date: dbPurchase.date,
+    date: new Date(dbPurchase.date),
     userId: dbPurchase.user_id,
     labelId: dbPurchase.label_id,
   } as Purchase;
@@ -57,7 +56,7 @@ const createPurchase = async ({
 }: MinimumPurchase) => {
   const query = {
     text: `INSERT INTO ${purchaseTable}(name, description, cost, date, user_id, label_id) VALUES($1, $2, $3, $4, $5, $6) RETURNING *`,
-    values: [name, description, cost, date, userId, labelId],
+    values: [name, description, cost, date.toISOString(), userId, labelId],
   };
 
   try {
@@ -172,7 +171,7 @@ const getPurchasesByUserIdAndDate = async ({
   let query;
   if (end && !start) {
     query = {
-      text: `SELECT * FROM ${purchaseTable} WHERE user_id=$1 AND date <= $3 ORDER BY date`,
+      text: `SELECT * FROM ${purchaseTable} WHERE user_id=$1 AND date <= $2 ORDER BY date`,
       values: [userId, end.toISOString()],
     };
   } else if (!end && start) {

@@ -4,6 +4,7 @@ import {
   createPurchase,
   type MinimumPurchase,
   getPurchasesByUserId,
+  getPurchasesByUserIdAndDate,
 } from '../lib/purchase.js';
 import { getDefaultLabelByName } from '../lib/label.js';
 
@@ -21,7 +22,20 @@ router.get('/purchase/:userId?', async (req: Request, res: Response) => {
       .status(401)
       .json({ error: 'You cannot see another users purchases' });
 
-  const purchases = await getPurchasesByUserId(id);
+  // Optional query params
+  let startDate: Date | undefined = new Date(req.query.start as string);
+  if (isNaN(startDate as unknown as number)) startDate = undefined;
+  let endDate: Date | undefined = new Date(req.query.end as string);
+  if (isNaN(endDate as unknown as number)) endDate = undefined;
+
+  let purchases;
+  if (startDate || endDate)
+    purchases = await getPurchasesByUserIdAndDate({
+      userId: id,
+      start: startDate,
+      end: endDate,
+    });
+  else purchases = await getPurchasesByUserId(id);
 
   if (!purchases)
     return res.status(500).json({ error: 'Unable to get purchases' });
@@ -50,8 +64,7 @@ router.post('/purchase/:userId?', async (req: Request, res: Response) => {
   const description: string | null = req.body.description ?? null;
   let cost: number | string | null = req.body.cost ?? null;
   if (cost !== null) cost = Math.round(Number(cost) * 1000) / 1000; // Rounding to 3 decimal places
-  let date: string | null = req.body.date ?? null;
-  if (date !== null) date = date?.toString();
+  let date: Date = req.body.date ? new Date(req.body.date) : new Date();
   // Label name
   const label: string | null = req.body.label ?? null;
 
@@ -63,12 +76,7 @@ router.post('/purchase/:userId?', async (req: Request, res: Response) => {
     return res
       .status(400)
       .json({ error: 'Cost is a required field for purchase' });
-  else if (!date)
-    return res
-      .status(400)
-      .json({ error: 'Date is a required field for purchase' });
-  else if (isNaN(new Date(date) as unknown as number))
-    // Ehh kinda gross
+  else if (isNaN(date as unknown as number))
     return res.status(400).json({
       error: `Invalid date format. Try something like ${new Date().toISOString()}`,
     });
