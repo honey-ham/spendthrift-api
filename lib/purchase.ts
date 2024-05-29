@@ -210,6 +210,23 @@ const getPurchasesByUserIdAndDate = async ({
   }
 };
 
+const getPurchaseByPurchaseId = async (purchaseId: string) => {
+  const query = {
+    text: `SELECT * FROM ${purchaseTable} WHERE id=$1`,
+    values: [purchaseId],
+  };
+
+  try {
+    const res = await pool.query(query);
+    if (res.rowCount) return dbPurchaseToPurchase(res.rows[0]);
+    console.error('Error: Could get purchase (getPurchaseByPurchaseId())');
+    return null;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+};
+
 export {
   Purchase,
   MinimumPurchase,
@@ -218,4 +235,5 @@ export {
   deletePurchase,
   getPurchasesByUserId,
   getPurchasesByUserIdAndDate,
+  getPurchaseByPurchaseId,
 };

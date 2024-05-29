@@ -3,10 +3,14 @@ import { Router, type Request, type Response } from 'express';
 import {
   createPurchase,
   type MinimumPurchase,
+  type Purchase,
   getPurchasesByUserId,
   getPurchasesByUserIdAndDate,
+  getPurchaseByPurchaseId,
+  updatePurchase,
+  deletePurchase,
 } from '../lib/purchase.js';
-import { getDefaultLabelByName } from '../lib/label.js';
+import { Label, getDefaultLabelByName } from '../lib/label.js';
 
 const router = Router();
 
@@ -64,7 +68,7 @@ router.post('/purchase/:userId?', async (req: Request, res: Response) => {
   const description: string | null = req.body.description ?? null;
   let cost: number | string | null = req.body.cost ?? null;
   if (cost !== null) cost = Math.round(Number(cost) * 1000) / 1000; // Rounding to 3 decimal places
-  let date: Date = req.body.date ? new Date(req.body.date) : new Date();
+  const date: Date = req.body.date ? new Date(req.body.date) : new Date();
   // Label name
   const label: string | null = req.body.label ?? null;
 
@@ -106,11 +110,73 @@ router.post('/purchase/:userId?', async (req: Request, res: Response) => {
   return res.status(200).json({ message: 'Purchase successfully created' });
 });
 
-router.put('/purchase', (req: Request, res: Response) => {});
+router.put('/purchase/:purchaseId', async (req: Request, res: Response) => {
+  const userId = res.locals.userId;
 
-router.delete(
-  '/purchase/:purchaseId/:userId?',
-  (req: Request, res: Response) => {},
-);
+  // Need to figure out who owns the purchase
+  const purchase = await getPurchaseByPurchaseId(req.params.purchaseId);
+  if (!purchase) return res.status(400).json({ error: 'Invalid purchase id' });
+  else if (purchase.userId !== userId && !res.locals.isSuperuser)
+    return res
+      .status(401)
+      .json({ error: 'You cannot modify another users purchase' });
+
+  // Update the purchase
+  const name: string | null = req.body.name ?? null;
+  const description: string | null = req.body.description ?? null;
+  let cost: number | string | null = req.body.cost ?? null;
+  if (cost !== null) cost = Math.round(Number(cost) * 1000) / 1000; // Rounding to 3 decimal places
+  const date: Date | null = req.body.date ? new Date(req.body.date) : null;
+  // Label name
+  const label: string | null = req.body.label ?? null;
+
+  if (date !== null && isNaN(date as unknown as number))
+    return res.status(400).json({
+      error: `Invalid date format. Try something like ${new Date().toISOString()}`,
+    });
+  else if (cost !== null && cost > 999999999999)
+    return res.status(400).json({ error: 'Cost is too large to store' });
+
+  // Getting label id
+  let labelObj: Label | null = null;
+  if (label) {
+    labelObj = await getDefaultLabelByName(label);
+    if (!labelObj)
+      return res.status(400).json({ error: `Could not find label '${label}'` });
+  }
+
+  const updatedPurchase: Purchase = { ...purchase };
+  if (name) updatedPurchase.name = name;
+  if (description) updatedPurchase.description = description;
+  if (cost) updatedPurchase.cost = cost;
+  if (date) updatedPurchase.date = date;
+  if (labelObj) updatedPurchase.labelId = labelObj.id;
+
+  const isSuccess = await updatePurchase(updatedPurchase);
+  if (!isSuccess)
+    res
+      .status(500)
+      .json({ error: 'Unable to update purchase. Please try again' });
+  res.status(200).json({ message: 'Successfully updated purchase' });
+});
+
+router.delete('/purchase/:purchaseId', async (req: Request, res: Response) => {
+  const userId = res.locals.userId;
+
+  // Need to figure out who owns the purchase
+  const purchase = await getPurchaseByPurchaseId(req.params.purchaseId);
+  if (!purchase) return res.status(400).json({ error: 'Invalid purchase id' });
+  else if (purchase.userId !== userId && !res.locals.isSuperuser)
+    return res
+      .status(401)
+      .json({ error: 'You cannot delete another users purchase' });
+
+  const isSuccess = await deletePurchase(purchase.id);
+  if (!isSuccess)
+    res
+      .status(500)
+      .json({ error: 'Unable to delete purchase. Please try again' });
+  res.status(200).json({ message: 'Successfully deleted purchase' });
+});
 
 export default router;
