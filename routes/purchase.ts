@@ -14,6 +14,12 @@ import { Label, getDefaultLabelByName } from '../lib/label.js';
 
 const router = Router();
 
+/**
+ * Gets purchases for a user
+ * [Path params] userId (optional)
+ * [Query params] start (optional): Iclusive start date
+ *               end (optional): Inclusive end date
+ */
 router.get('/purchase/:userId?', async (req: Request, res: Response) => {
   const id = req.params.userId ?? res.locals.userId;
 
@@ -52,6 +58,10 @@ router.get('/purchase/:userId?', async (req: Request, res: Response) => {
 //   async (req: Request, res: Response) => {},
 // );
 
+/**
+ * Creates a purchase
+ * [Path params] userId (optional)
+ */
 router.post('/purchase/:userId?', async (req: Request, res: Response) => {
   const id = req.params.userId ?? res.locals.userId;
 
@@ -110,6 +120,10 @@ router.post('/purchase/:userId?', async (req: Request, res: Response) => {
   return res.status(200).json({ message: 'Purchase successfully created' });
 });
 
+/**
+ * Updates a purchase
+ * [Path params] purchaseId: Identifies which purchase to update
+ */
 router.put('/purchase/:purchaseId', async (req: Request, res: Response) => {
   const userId = res.locals.userId;
 
@@ -154,12 +168,16 @@ router.put('/purchase/:purchaseId', async (req: Request, res: Response) => {
 
   const isSuccess = await updatePurchase(updatedPurchase);
   if (!isSuccess)
-    res
+    return res
       .status(500)
       .json({ error: 'Unable to update purchase. Please try again' });
-  res.status(200).json({ message: 'Successfully updated purchase' });
+  return res.status(200).json({ message: 'Successfully updated purchase' });
 });
 
+/**
+ * Deletes a purchase
+ * [Path params] purchaseId: Identifies which purchase to delete
+ */
 router.delete('/purchase/:purchaseId', async (req: Request, res: Response) => {
   const userId = res.locals.userId;
 

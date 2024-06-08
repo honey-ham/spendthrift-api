@@ -77,20 +77,9 @@ const createPurchase = async ({
  */
 const updatePurchase = async (purchase: Purchase) => {
   let count = 1;
-  let text = `UPDATE ${purchaseTable} SET `;
-  const values = [];
-  for (const key in purchase) {
-    if (key === 'id') continue;
-    else if (purchase[key as keyof Purchase] === undefined) continue;
-
-    text += `${key}=$${count++} `;
-    values.push(purchase[key as keyof Purchase]);
-  }
-  text += `WHERE user_id=$${count}`;
-  values.push(purchase.id);
-
+  let text = `UPDATE ${purchaseTable} SET name=$1, description=$2, cost=$3, date=$4, user_id=$5, label_id=$6 WHERE user_id=$7 AND id=$8 RETURNING *`;
+  const values = [ purchase.name, purchase.description, purchase.cost, purchase.date, purchase.userId, purchase.labelId, purchase.userId, purchase.id ];
   const query = { text, values };
-
   try {
     const res = await pool.query(query);
     if (res.rowCount) return dbPurchaseToPurchase(res.rows[0]);
