@@ -17,23 +17,26 @@ import { msSinceDate } from '../utils/misc.js';
 
 const router = Router();
 
-router.post('/verifyEmail/:userId?', async (req: Request, res: Response) => {
-  const id = req.params.userId ?? res.locals.userId;
+router.post('/verifyEmail/:userId', async (req: Request, res: Response) => {
+  const id = req.params.userId;
 
-  if (
-    !res.locals.isSuperuser &&
-    req.params.userId &&
-    res.locals.userId !== req.params.userId
-  )
+  if (req.params.userId === undefined)
     return res
-      .status(401)
-      .json({ error: 'You cannot verify another users account' });
+      .status(400)
+      .json({ error: 'Invalid validation request' });
+
+  // Does user exist?
+  const isUserReal = await getUserById(id);
+  if(!isUserReal) {
+    return res.status(500).json({ error: 'Unable to verify email' });
+  }
 
   const isUserVerified = await verifyUser(id);
-  if (isUserVerified)
+  if (isUserVerified) {
     return res.status(200).json({
       message: "User's email was successfully verified",
     });
+  }
   return res.status(500).json({ error: 'Unable to verify email' });
 });
 
@@ -44,12 +47,12 @@ router.post(
 
     if (
       !res.locals.isSuperuser &&
-      req.params.userId &&
+      req.params.userId !== undefined &&
       res.locals.userId !== req.params.userId
     )
       return res
         .status(401)
-        .json({ error: 'You cannot verify another users account' });
+        .json({ error: 'You cannot send an email for another user' });
 
     const user = await getUserById(id);
     if (user === null)
