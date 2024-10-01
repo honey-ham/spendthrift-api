@@ -1,6 +1,8 @@
 import express, { Express, type Request, type Response } from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
+import swaggerJsdoc from 'swagger-jsdoc';
+import swaggerUi from 'swagger-ui-express';
 // import { verifyRequestOrigin } from 'lucia';
 
 import unknownAccountRouter from './routes/unknown-account.js';
@@ -17,6 +19,28 @@ app.use(express.json());
 app.use(cookieParser(getEnv('COOKIE_SECRET')));
 
 const port = getEnv('PORT') || 3000;
+
+// Swagger setup (API documentation)
+const swaggerOptions = {
+  swaggerDefinition: {
+      openapi: '3.1.0',
+      info: {
+          title: 'Spendthrift API',
+          description: 'Sole supporter of all things Spendthrift',
+          contact: {
+              name: 'Sam H'
+          },
+      },
+      servers: [
+          {
+              url: `http://localhost:${port}/`
+          }
+      ],
+  },
+  apis: ['./routes/*.ts']
+};
+const swaggerDocs = swaggerJsdoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Something to prevent CSRF written in the lucia docs
 // app.use((req, res, next) => {
