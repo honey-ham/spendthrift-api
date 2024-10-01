@@ -6,7 +6,7 @@ import 'dotenv/config';
  */
 const getEnv = (key: string) => {
   const value = process.env[key];
-  if (value === undefined || value === null)
+  if (value === undefined || value === null || value === '')
     throw Error(
       `Missing environment variable '${key}'. This should be added to the root of the project in the '.env' file`,
     );

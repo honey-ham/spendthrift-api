@@ -19,28 +19,35 @@ app.use(express.json());
 app.use(cookieParser(getEnv('COOKIE_SECRET')));
 
 const port = getEnv('PORT') || 3000;
+const version = getEnv('VERSION');
+const versionString = `v${version}`;
 
 // Swagger setup (API documentation)
 const swaggerOptions = {
   swaggerDefinition: {
-      openapi: '3.1.0',
-      info: {
-          title: 'Spendthrift API',
-          description: 'Sole supporter of all things Spendthrift',
-          contact: {
-              name: 'Sam H'
-          },
+    openapi: '3.1.0',
+    info: {
+      title: 'Spendthrift API',
+      description: 'Sole supporter of all things Spendthrift',
+      version,
+      contact: {
+        name: 'Sam H',
       },
-      servers: [
-          {
-              url: `http://localhost:${port}/`
-          }
-      ],
+    },
+    servers: [
+      {
+        url: `http://localhost:${port}/`,
+      },
+    ],
   },
-  apis: ['./routes/*.ts']
+  apis: ['./routes/*.ts'],
 };
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+app.use(
+  `/${versionString}/api-docs`,
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerDocs),
+);
 
 // Something to prevent CSRF written in the lucia docs
 // app.use((req, res, next) => {
@@ -56,7 +63,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 // });
 
 // Handles sign-in and sign-up
-app.use('/', unknownAccountRouter);
+app.use(`/${versionString}/`, unknownAccountRouter);
 
 app.use(async (req: Request, res: Response, next) => {
   // Checking for session cookie
@@ -95,8 +102,8 @@ app.use(async (req: Request, res: Response, next) => {
   return next();
 });
 
-app.use('/', accountRouter);
-app.use('/', purchaseRouter);
+app.use(`/${versionString}/`, accountRouter);
+app.use(`/${versionString}/`, purchaseRouter);
 
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);

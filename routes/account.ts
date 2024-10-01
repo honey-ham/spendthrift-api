@@ -21,13 +21,11 @@ router.post('/verifyEmail/:userId', async (req: Request, res: Response) => {
   const id = req.params.userId;
 
   if (req.params.userId === undefined)
-    return res
-      .status(400)
-      .json({ error: 'Invalid validation request' });
+    return res.status(400).json({ error: 'Invalid validation request' });
 
   // Does user exist?
   const isUserReal = await getUserById(id);
-  if(!isUserReal) {
+  if (!isUserReal) {
     return res.status(500).json({ error: 'Unable to verify email' });
   }
 

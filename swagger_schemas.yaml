@@ -1,0 +1,8 @@
+# Contains schemas used in the @swagger jsdoc comments
+
+schemas:
+  Error:
+    type: object
+    properties:
+      error: 
+        type: string

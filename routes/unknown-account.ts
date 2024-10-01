@@ -25,6 +25,23 @@ import { sendVerificationEmail } from '../lib/email.js';
 
 const router = Router();
 
+/**
+ * @swagger
+ * /signup:
+ *   post:
+ *     description: Create a Spendthrift account
+ *     responses:
+ *       '200':
+ *         description: Signup successful. Give requestor a fresh session cookie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '../swagger_schemas.yaml#/schemas/Error'
+ *       '400':
+ *         description: A successful response
+ *       '500':
+ *         description: Employee not found
+ */
 router.post('/signup', async (req: Request, res: Response) => {
   const firstName: string | null = req.body.firstName ?? null;
   const lastName: string | null = req.body.firstName ?? null;
