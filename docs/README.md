@@ -1,3 +1,5 @@
+# Building TS Types for use on front-end and back-end
+
 To generate types which correspond with the openapi config run 'npm run build-types'
 
 This script will output a file called ./openapi.d.ts
