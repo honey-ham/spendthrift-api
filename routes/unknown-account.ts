@@ -26,21 +26,47 @@ import { sendVerificationEmail } from '../lib/email.js';
 const router = Router();
 
 /**
- * @swagger
- * /signup:
- *   post:
- *     description: Create a Spendthrift account
- *     responses:
- *       '200':
- *         description: Signup successful. Give requestor a fresh session cookie
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '../swagger_schemas.yaml#/schemas/Error'
- *       '400':
- *         description: A successful response
- *       '500':
- *         description: Employee not found
+@swagger
+/signup:
+  post:
+    description: Create a Spendthrift account
+    components:
+      schemas:
+        Error:
+          type: object
+              error:
+                type: string
+    responses:
+      "200":
+        description: Signup successful. Fresh session cookie added + success message returned
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: Success string
+      "400":
+        description: Signup failed. Message returned will describe the problem
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                  description: Success string
+      "500":
+        description: Signup failed (Error on our end). Message returned will describe the problem
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string
+                  description: Success string
  */
 router.post('/signup', async (req: Request, res: Response) => {
   const firstName: string | null = req.body.firstName ?? null;

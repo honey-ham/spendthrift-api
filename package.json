@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "dev": "tsx watch index.ts",
     "lint": "eslint .",
-    "format": "prettier . --write"
+    "format": "prettier . --write",
+    "build-types": "tsx ./docs/index.ts"
   },
   "dependencies": {
     "@lucia-auth/adapter-postgresql": "^3.1.1",
@@ -40,6 +41,7 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.3",
     "globals": "^15.1.0",
+    "openapi-typescript": "^7.4.1",
     "prettier": "3.2.5",
     "ts-node": "^10.9.2",
     "tsx": "^4.7.1",
