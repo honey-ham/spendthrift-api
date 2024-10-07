@@ -95,10 +95,10 @@ router.post('/signup', async (req: Request, res: Response) => {
   // Checking for existing users with the same username or password
   let prexistingUser = await getUserByUsername(username);
   if (prexistingUser)
-    return res.status(400).json({ error: `Username already exists` });
+    return res.status(500).json({ error: `Username already exists` });
   prexistingUser = await getUserByEmail(req.body.email);
   if (prexistingUser)
-    return res.status(400).json({ error: `Email already exists` });
+    return res.status(500).json({ error: `Email already exists` });
 
   const hashedPassword = await new Argon2id().hash(password);
   console.log(hashedPassword);

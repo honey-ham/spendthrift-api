@@ -1,7 +1,6 @@
 import express, { Express, type Request, type Response } from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
-import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 // import { verifyRequestOrigin } from 'lucia';
 
@@ -11,6 +10,7 @@ import purchaseRouter from './routes/purchase.js';
 import { getEnv } from './utils/misc.js';
 import { lucia } from './lib/auth.js';
 import { getUserPermissions, getUserById, Permissions } from './lib/user.js';
+import swaggerDocument from './docs/openapi.json' with { type: 'json' };
 
 dotenv.config();
 
@@ -23,30 +23,10 @@ const version = getEnv('VERSION');
 const versionString = `v${version}`;
 
 // Swagger setup (API documentation)
-const swaggerOptions = {
-  swaggerDefinition: {
-    openapi: '3.1.0',
-    info: {
-      title: 'Spendthrift API',
-      description: 'Sole supporter of all things Spendthrift',
-      version,
-      contact: {
-        name: 'Sam H',
-      },
-    },
-    servers: [
-      {
-        url: `http://localhost:${port}/`,
-      },
-    ],
-  },
-  apis: ['./routes/*.ts'],
-};
-const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use(
-  `/${versionString}/api-docs`,
+  `/${versionString}/docs`,
   swaggerUi.serve,
-  swaggerUi.setup(swaggerDocs),
+  swaggerUi.setup(swaggerDocument),
 );
 
 // Something to prevent CSRF written in the lucia docs

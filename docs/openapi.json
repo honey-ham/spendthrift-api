@@ -1,0 +1,278 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Spendthrift API",
+    "description": "Sole supporter of all things Spendthrift",
+    "version": "1"
+  },
+  "tags": [
+    {
+      "name": "unknown account",
+      "description": "Operations that don't require auth"
+    },
+    {
+      "name": "account",
+      "description": "Operations about accounts"
+    },
+    {
+      "name": "purchase",
+      "description": "Operations about purchases"
+    },
+    {
+      "name": "subscription",
+      "description": "Operations about subscriptions"
+    }
+  ],
+  "paths": {
+    "/v1/signup": {
+      "post": {
+        "tags": [
+          "unknown account"
+        ],
+        "summary": "Create a new account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserSignup"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Account created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Mistake in the request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server issue",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/signin": {
+      "post": {
+        "tags": [
+          "unknown account"
+        ],
+        "summary": "Signin to an existing account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "example": "jdoe"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "1234Password"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Account created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Mistake in the request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "MinimumUser": {
+        "type": "object",
+        "description": "Used for creating a user account with the minimum possible info",
+        "required": [
+          "firstName",
+          "lastName",
+          "username",
+          "password",
+          "email"
+        ],
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "example": "John"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Doe"
+          },
+          "username": {
+            "type": "string",
+            "example": "jdoe3"
+          },
+          "password": {
+            "type": "string",
+            "description": "Password hash",
+            "example": "1234Password"
+          },
+          "email": {
+            "type": "string",
+            "example": "jdoe3@gmail.com"
+          }
+        }
+      },
+      "User": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MinimumUser"
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "isLocked",
+              "isVerified",
+              "lastVerificationAttempt",
+              "permissionId"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "UUID that uniquely identifies a user",
+                "example": "acde070d-8c4c-4f0d-9d8a-162843c10333"
+              },
+              "isLocked": {
+                "type": "boolean",
+                "description": "Prevents the user from using their account when true (Admin control)"
+              },
+              "isVerified": {
+                "type": "boolean",
+                "description": "Indicates when a user has verified their email + Prevents a user from using their account"
+              },
+              "lastVerificationAttempt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Last time a verification email was sent to the user"
+              },
+              "permissionId": {
+                "type": "string",
+                "description": "UUID of the permission assigned to the user",
+                "example": "acde070d-8c4c-4f0d-9d8a-162843c10340"
+              }
+            }
+          }
+        ]
+      },
+      "UserSignup": {
+        "type": "object",
+        "required": [
+          "firstName",
+          "lastName",
+          "username",
+          "password",
+          "passwordConfirm",
+          "email",
+          "emailConfirm"
+        ],
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "example": "John"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Doe"
+          },
+          "username": {
+            "type": "string",
+            "example": "jdoe3"
+          },
+          "password": {
+            "type": "string",
+            "description": "Plain text password (Not a hash)",
+            "example": "1234Password"
+          },
+          "passwordConfirm": {
+            "type": "string",
+            "description": "Must match password",
+            "example": "1234Password"
+          },
+          "email": {
+            "type": "string",
+            "example": "jdoe3@gmail.com"
+          },
+          "emailConfirm": {
+            "type": "string",
+            "example": "jdoe3@gmail.com"
+          }
+        }
+      },
+      "Success": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Success!"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "Passwords did not match"
+          }
+        }
+      }
+    }
+  }
+}

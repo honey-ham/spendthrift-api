@@ -1,4 +1,4 @@
-# Building TS Types for use on front-end and back-end
+# Building TS Types for use on front-end & back-end
 
 To generate types which correspond with the openapi config run 'npm run build-types'
 
